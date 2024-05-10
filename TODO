@@ -1,0 +1,20 @@
+TODO:
+Data Collection and Storage:
+Within inspectTreeShaking(), collect accelerometer data during each sampling cycle.
+Store the accelerometer data in a suitable data structure.
+
+Batch Creation:
+Define conditions for creating a batch (e.g., number of cycles before going to sleep, sufficient vibration data).
+Create batches of data that include accelerometer values, sampling cycle references, and timestamps.
+
+Excel File Handling:
+Implement functionality to write batches to an Excel file stored locally on the ESP32S3 memory.
+You may need to explore libraries or develop your own functions to handle Excel file operations in C.
+
+MQTT Integration:
+Implement MQTT functionality to send the Excel file when required.
+Use appropriate MQTT libraries compatible with the ESP32S3 and your MQTT broker.
+
+Code Integration:
+Integrate the above functionalities into the existing code structure, ensuring compatibility and proper function execution.
+Modify the main loop to handle data collection, batch creation, Excel file writing, and MQTT communication based on your defined conditions.
