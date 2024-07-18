@@ -1,6 +1,4 @@
-### Project Description
-
-**Accelerometer-Based Tree Shaking Detection System**
+### Accelerometer-Based Vibration Pattern Detection System
 
 ---
 
@@ -26,11 +24,21 @@ This project implements an accelerometer-based system to detect tree shaking, a 
 
 ---
 
+### Prototype Images
+
+Here are some images of the current prototype:
+
+![Prototype Front View](docs/images/shake_detection_proto_esp32s3.jpg)
+*Front view of the prototype.*
+
+![Prototype Side View](docs/images/shake_detection_proto_side_esp32s3.jpg)
+*Side view of the prototype.*
+
 #### Setup and Operation
-1. **Hardware Setup**: Connect the MPU6050 sensor to the ESP32 microcontroller.
+1. **Hardware Setup**: Connect the MPU6050 sensor to the ESP32 over I2C. Add a simple diode scheme to disable the shake detector upon wakeup of the module.
 2. **Software Configuration**: Define threshold values and sampling duration in the code.
-3. **Deployment**: Deploy the system in the vicinity of trees to monitor potential shaking events.
-4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated.
+3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid device, such as PVC, so that vibrations in the trunk can transfer to the accelerometer.
+4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated. No vibration will put the system into deep sleep. A simple IRFZ44N acts as an off switch for the shake detector while the accelerometer computes the vibration pattern. The LED does the alarm functionality indicating whether or not a logging is happening to the tree.
 5. **Analysis**: Analyze logged data to identify shaking events and assess potential threats to trees.
 6. **Maintenance**: Periodically check and maintain the system to ensure accurate monitoring and alarm functionality.
 
