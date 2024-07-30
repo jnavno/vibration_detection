@@ -48,7 +48,7 @@ void setup() {
         Serial.print(i + 1);
         Serial.println(" completed");
 
-        // Add your code here to handle shake detection logic
+        //handling shake detection logic
 
         if (i < 4) {
             Serial.println("Waiting for next sampling cycle...");
