@@ -67,7 +67,7 @@ Here are some images of the current prototype:
 
 2. **Software Configuration**: Define threshold values and sampling duration in the code.
 
-3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid device, such as PVC, so that vibrations in the trunk can transfer to the accelerometer.
+3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid device, such as PVC, so that vibrations in the trunk will move through the casing into the accelerometer.
 
 4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated. No vibration will put the system into deep sleep. A simple IRFZ44N acts as an off switch for the shake detector while the accelerometer computes the vibration pattern. The LED does the alarm functionality indicating whether or not a logging is happening to the tree.
 
@@ -92,6 +92,3 @@ Josep Navarro, UVERD ltd
 - ESP32 Arduino Core developers for the development tools and libraries.
 
 ---
-
-#### Note
-This README provides a brief overview of the project. For detailed information, including code implementation and usage instructions, refer to the project documentation and source code files.
