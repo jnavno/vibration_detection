@@ -3,13 +3,13 @@
 ---
 
 #### Overview
-This project implements an accelerometer-based system to detect tree shaking, a phenomenon indicating potential threats to trees due to external mechanical forces, such as logging. It utilizes an ESP32 S3 microcontroller, Adafruit MPU6050 accelerometer, and SPIFFS filesystem for data storage.
+This project implements an accelerometer-based system to detect specific vibrations in trees, a phenomenon indicating potential threats to trees due to external mechanical forces, such as logging. It utilizes an ESP32 S3 microcontroller, Adafruit MPU6050 accelerometer, and SPIFFS filesystem for data storage.
 
 ---
 
 #### Key Features
 - **Accelerometer Sensing**: The system measures acceleration along three axes to detect tree shaking events.
-- **Threshold Sensitivity**: Adjustable threshold values enable fine-tuning of sensitivity to detect shaking events.
+- **Threshold Sensitivity**: Adjustable threshold values enable fine-tuning of sensitivity to detect shaking events, accounting for casing rigidity and full device weight values.
 - **Data Logging**: Accelerometer data and computed work values are logged into a CSV file on the SPIFFS filesystem.
 - **Alarm System**: An alarm is triggered if the detected shaking surpasses predefined thresholds, indicating potential threats to trees.
 - **Low Power Mode**: The system utilizes low power modes to conserve energy when not actively sensing.
@@ -17,10 +17,11 @@ This project implements an accelerometer-based system to detect tree shaking, a 
 ---
 
 #### Components
-- **ESP32 Microcontroller**: Manages system operations, sensor interfacing, and data logging.
-- **Adafruit MPU6050**: Accelerometer sensor for measuring tree movements.
-- **SPIFFS Filesystem**: Used for storing accelerometer data in CSV format.
+- **[ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html) | [Heltec V3](https://heltec.org/project/wifi-lora-32-v3/)**: Manages system operations, sensor interfacing, and data logging.
+- **[Adafruit MPU6050](https://www.adafruit.com/product/3886)**: Accelerometer sensor for measuring tree movements.
+- **[SPIFFS Filesystem](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html)**: Used for storing accelerometer data in CSV format.
 - **LED Indicator**: Provides visual feedback, indicating system status and alarm activation.
+
 
 ---
 
