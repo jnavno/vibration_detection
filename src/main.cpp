@@ -22,7 +22,8 @@ void setup() {
     pinMode(LED_PIN, OUTPUT);
     attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), handleInterrupt, RISING);
     esp_sleep_enable_ext0_wakeup(INTERRUPT_PIN, HIGH);
-    Wire.begin(10, 11);
+
+    Wire.begin(SDA_PIN, SCL_PIN);
 
     initFileSystem();
 

@@ -24,7 +24,7 @@ This project implements an accelerometer-based system to detect tree shaking, a 
 
 ---
 
-### Prototype Images
+### Prototyping
 
 Here are some images of the current prototype:
 
@@ -34,12 +34,44 @@ Here are some images of the current prototype:
 ![Prototype Side View](docs/images/shake_detection_proto_side_esp32s3.jpg)
 *Side view of the prototype.*
 
-#### Setup and Operation
-1. **Hardware Setup**: Connect the MPU6050 sensor to the ESP32 over I2C. Add a simple diode scheme to disable the shake detector upon wakeup of the module.
+
+
+### Pinout
+
+#### Heltec V3 Devkit
+
+| Function                     | GPIO Number | Pin Description                |
+|------------------------------|-------------|--------------------------------|
+| **LED Pin**                  | 3           | Debugging LED                  |
+| **Interrupt Pin**            | 7           | External Interrupt             |
+| **Accelerometer Power Pin**  | 5           | Power control for accelerometer|
+| **I2C SDA**                  | 41          | I2C Data (SDA)                 |
+| **I2C SCL**                  | 42          | I2C Clock (SCL)                |
+
+
+#### ESP32-S3 Devkit (code should work the same, just toggle [env:esp32_s3] )
+
+| Function                     | GPIO Number | Pin Description                |
+|------------------------------|-------------|--------------------------------|
+| **LED Pin**                  | 17          | Debugging LED                  |
+| **Interrupt Pin**            | 7           | External Interrupt             |
+| **Accelerometer Power Pin**  | 4           | Power control for accelerometer|
+| **I2C SDA**                  | 10          | I2C Data (SDA)                 |
+| **I2C SCL**                  | 11          | I2C Clock (SCL)                |
+
+
+### Setup and Operation
+
+1. **Hardware Setup**: Connect the MPU6050 sensor over I2C. A simple diode scheme will disable the shake detector upon module's wakeup.
+
 2. **Software Configuration**: Define threshold values and sampling duration in the code.
+
 3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid device, such as PVC, so that vibrations in the trunk can transfer to the accelerometer.
+
 4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated. No vibration will put the system into deep sleep. A simple IRFZ44N acts as an off switch for the shake detector while the accelerometer computes the vibration pattern. The LED does the alarm functionality indicating whether or not a logging is happening to the tree.
-5. **Analysis**: Analyze logged data to identify shaking events and assess potential threats to trees.
+
+5. **Analysis**: Logged data can be used to identify shaking events and patterns and assess potential threats to trees.
+
 6. **Maintenance**: Periodically check and maintain the system to ensure accurate monitoring and alarm functionality.
 
 ---

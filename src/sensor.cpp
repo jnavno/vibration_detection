@@ -1,7 +1,7 @@
 #include "sensor.h"
 #include "file_system.h"
 
-SensorManager::SensorManager() : weight(0.102), totalWorkX(0.0), totalWorkY(0.0), totalWorkZ(0.0), totalWork(0.0) {
+SensorManager::SensorManager() : weight(DEVICE_WEIGHT), totalWorkX(0.0), totalWorkY(0.0), totalWorkZ(0.0), totalWork(0.0) {
     if (!mpu.begin()) {
         Serial.println("Failed to find MPU6050 chip");
     }
