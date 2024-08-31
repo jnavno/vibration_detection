@@ -25,6 +25,23 @@ This project implements an accelerometer-based system to detect specific vibrati
 
 
 ---
+#### Libraries
+
+.ini file for the Heltec V3
+```bash
+[env:heltec_wifi_lora_32_V3]
+platform = espressif32@6.8.1
+board = heltec_wifi_lora_32_V3
+framework = arduino
+```
+.ini file for the ESP32-S3 Devkit
+```bash
+[env:esp32_s3]
+platform = espressif32
+board = esp32_s3_devkitc
+framework = arduino
+```
+---
 
 ### Prototyping
 
