@@ -4,7 +4,9 @@
 void initFileSystem() {
     if (!SPIFFS.begin(true)) {
         Serial.println("Failed to mount SPIFFS filesystem");
-        return;
+        // Optionally, you could reformat or attempt to handle the error differently
+    } else {
+        Serial.println("SPIFFS filesystem mounted successfully");
     }
 }
 

@@ -4,6 +4,7 @@
 SensorManager::SensorManager() : weight(DEVICE_WEIGHT), totalWorkX(0.0), totalWorkY(0.0), totalWorkZ(0.0), totalWork(0.0) {
     if (!mpu.begin()) {
         Serial.println("Failed to find MPU6050 chip");
+        while (1); // Halt execution if MPU6050 is not found
     }
 }
 
@@ -13,11 +14,7 @@ bool SensorManager::inspectTreeShaking() {
     int sample_count = 0;
     AccelerometerSample samples[MAX_SAMPLES_PER_CYCLE];
 
-    if (!mpu.begin()) {
-        Serial.println("Failed to find MPU6050 chip");
-        return false;
-    }
-
+ 
     Serial.println("Checking for tree shaking...");
 
     while (elapsedTime < INSPECTION_DURATION_SECONDS * 1000 && sample_count < MAX_SAMPLES_PER_CYCLE) {

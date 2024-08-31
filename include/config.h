@@ -6,10 +6,10 @@
 // Define board-specific settings
 #if defined(HELTEC_V3_DEVKIT)
     #define INTERRUPT_PIN GPIO_NUM_7
-    #define LED_PIN 3
-    #define ACCEL_POWER_PIN 5
-    #define SDA_PIN 41
-    #define SCL_PIN 42
+    #define LED_PIN GPIO_NUM_3
+    #define ACCEL_POWER_PIN GPIO_NUM_5
+    #define SDA_PIN 41 //GPIO_NUM_40 = 41,
+    #define SCL_PIN 42 //GPIO_NUM_40 = 42,
 #elif defined(ESP32_S3_DEVKIT)
     #define INTERRUPT_PIN GPIO_NUM_7
     #define LED_PIN 17

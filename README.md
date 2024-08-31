@@ -1,3 +1,4 @@
+<!-- trunk-ignore-all(markdownlint/MD041) -->
 ### Accelerometer-Based Vibration Pattern Detection System
 
 ---
@@ -39,7 +40,7 @@ Here are some images of the current prototype:
 
 ### Pinout
 
-#### Heltec V3 Devkit
+#### [Heltec V3 Devkit](https://heltec.org/project/wifi-lora-32-v3/)
 
 | Function                     | GPIO Number | Pin Description                |
 |------------------------------|-------------|--------------------------------|
@@ -48,6 +49,10 @@ Here are some images of the current prototype:
 | **Accelerometer Power Pin**  | 5           | Power control for accelerometer|
 | **I2C SDA**                  | 41          | I2C Data (SDA)                 |
 | **I2C SCL**                  | 42          | I2C Clock (SCL)                |
+| **5V Input**                 | N/A         | 5V Power Input                 |
+| **3.3V Input**               | N/A         | 3.3V Power Input               |
+| **Vext Output**              | N/A         | 3.3V External Voltage Output   |
+
 
 
 #### ESP32-S3 Devkit (code should work the same, just toggle [env:esp32_s3] )

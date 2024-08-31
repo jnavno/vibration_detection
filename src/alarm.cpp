@@ -2,6 +2,7 @@
 #include <Arduino.h>
 
 void sendAlarm() {
+    pinMode(LED_PIN, OUTPUT); // Ensure LED pin is set as output
     for (int i = 0; i < 12; i++) {
         digitalWrite(LED_PIN, HIGH);
         delay(100);
