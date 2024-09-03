@@ -12,8 +12,10 @@ SensorManager sensorManager;
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
+    delay(2000);
 
+    Serial.println("Starting setup...");
+    
     ++bootCount;
     Serial.println("Boot number: " + String(bootCount));
 

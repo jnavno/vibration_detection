@@ -42,11 +42,13 @@ void toggleAccelPower(bool state)
         Serial.println("Turning on accelerometer...");
         digitalWrite(ACCEL_POWER_PIN, HIGH); // Power on the accelerometer
         delay(2000);
+        pinMode(ACCEL_POWER_PIN, INPUT); //Release the pin as mosfet is self-latching
     }
     else
     {
         Serial.println("Turning off accelerometer...");
         digitalWrite(ACCEL_POWER_PIN, LOW); // Power off the accelerometer
         delay(2000);
+        pinMode(ACCEL_POWER_PIN, INPUT); //Realease the pin as mosfet is self-latching
     }
 }
