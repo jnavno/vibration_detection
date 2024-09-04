@@ -19,7 +19,8 @@ This project implements an accelerometer-based system to detect specific vibrati
 
 #### Components
 - **[ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html) | [Heltec V3](https://heltec.org/project/wifi-lora-32-v3/)**: Manages system operations, sensor interfacing, and data logging.
-- **[Adafruit MPU6050](https://www.adafruit.com/product/3886)**: Accelerometer sensor for measuring tree movements.
+- **[GY-521 MPU6050](https://www.hotmcu.com/gy521-mpu6050-3axis-acceleration-gyroscope-6dof-module-p-83.html)**: Accelerometer sensor for measuring movements on the 3 axis.
+- **[LM741 OpAmp setup](https://www.ti.com/lit/ds/symlink/lm741.pdf)**: Deals with generating clean interrupts at nA range of input offset current.
 - **[SPIFFS Filesystem](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html)**: Used for storing accelerometer data in CSV format.
 - **LED Indicator**: Provides visual feedback, indicating system status and alarm activation.
 
@@ -97,6 +98,47 @@ Here are some images of the current prototype:
 
 6. **Maintenance**: Periodically check and maintain the system to ensure accurate monitoring and alarm functionality.
 
+7. **Battery Life**: If you have a 2000 mAh battery and the Heltec V3 module's power consumption and usage scenario remain the same (100 mA during computation for 1 minute per day, and 10 µA in deep sleep), the calculations are as follows:
+
+### 1. Estimate Daily Power Consumption
+
+**Active Time**: 1 minute per day
+
+- **Daily Active Consumption**:
+  \[
+  \text{Daily Active Consumption (mAh)} = \frac{100 \text{ mA} \times 60 \text{ seconds}}{3600 \text{ seconds/hour}} = \frac{6000}{3600} \approx 1.67 \text{ mAh/day}
+  \]
+
+**Deep Sleep Time**: 23 hours 59 minutes
+
+- **Deep Sleep Time in Hours**: 23.983 hours
+- **Daily Deep Sleep Consumption**:
+  \[
+  \text{Daily Deep Sleep Consumption (mAh)} = \frac{10 \text{ µA} \times 23.983 \text{ hours}}{1000} = \frac{239.83}{1000} \approx 0.24 \text{ mAh/day}
+  \]
+
+**Total Daily Consumption**:
+  \[
+  \text{Total Daily Consumption (mAh)} = 1.67 \text{ mAh} + 0.24 \text{ mAh} \approx 1.91 \text{ mAh/day}
+  \]
+
+### 2. Calculate Battery Life with a 2000 mAh Battery
+
+**Total Consumption per Day**: 1.91 mAh
+
+- **Battery Capacity**: 2000 mAh
+
+**Daily Battery Life**:
+  \[
+  \text{Daily Battery Life (days)} = \frac{2000 \text{ mAh}}{1.91 \text{ mAh/day}} \approx 1047.12 \text{ days}
+  \]
+
+**Battery Life in Years**:
+  \[
+  \text{Battery Life (years)} = \frac{1047.12 \text{ days}}{365.25 \text{ days/year}} \approx 2.87 \text{ years}
+  \]
+
+So, with a 2000 mAh battery, the system would last approximately **2.87 years** under the given usage scenario.
 ---
 
 #### License
