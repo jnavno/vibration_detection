@@ -1,23 +1,29 @@
 #include "sensor.h"
 #include "file_system.h"
+#include "config.h"
 
-SensorManager::SensorManager() : weight(DEVICE_WEIGHT), totalWorkX(0.0), totalWorkY(0.0), totalWorkZ(0.0), totalWork(0.0) {
-    if (!mpu.begin()) {
+SensorManager::SensorManager()
+    : weight(DEVICE_WEIGHT), totalWorkX(0.0), totalWorkY(0.0), totalWorkZ(0.0), totalWork(0.0)
+{
+    if (!mpu.begin())
+    {
         Serial.println("Failed to find MPU6050 chip");
-        while (1); // Halt execution if MPU6050 is not found
+        while (1)
+            ; // Halt execution if MPU6050 is not found
     }
 }
 
-bool SensorManager::inspectTreeShaking() {
+bool SensorManager::inspectTreeShaking()
+{
     unsigned long startTime = millis();
     unsigned long elapsedTime = 0;
     int sample_count = 0;
     AccelerometerSample samples[MAX_SAMPLES_PER_CYCLE];
 
- 
     Serial.println("Checking for tree shaking...");
 
-    while (elapsedTime < INSPECTION_DURATION_SECONDS * 1000 && sample_count < MAX_SAMPLES_PER_CYCLE) {
+    while (elapsedTime < INSPECTION_DURATION_SECONDS * 1000 && sample_count < MAX_SAMPLES_PER_CYCLE)
+    {
         sensors_event_t a, g, temp;
         mpu.getEvent(&a, &g, &temp);
 
@@ -41,6 +47,7 @@ bool SensorManager::inspectTreeShaking() {
         sample_count++;
         elapsedTime = millis() - startTime;
         delay(100);
+        yield(); // Add yield to prevent watchdog timeout
     }
 
     logDataToFile(CSV_FILENAME, samples, sample_count, totalWork);
@@ -50,7 +57,8 @@ bool SensorManager::inspectTreeShaking() {
     Serial.println("Total work done on Z axis: " + String(totalWorkZ));
     Serial.println("Total work done on all axes: " + String(totalWork));
 
-    if (sample_count < MAX_SAMPLES_PER_CYCLE) {
+    if (sample_count < MAX_SAMPLES_PER_CYCLE)
+    {
         Serial.println("Not enough samples collected. Exiting.");
         return false;
     }

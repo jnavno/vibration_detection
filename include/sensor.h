@@ -2,13 +2,15 @@
 #define SENSOR_H
 
 #include <Adafruit_MPU6050.h>
-#include "config.h"
+#include <Adafruit_Sensor.h>
 
-typedef struct {
-    float acceleration[3];
-    float work[3];
+#define MAX_SAMPLES_PER_CYCLE 100
+
+struct AccelerometerSample {
+    float acceleration[3]; // x, y, z
+    float work[3];         // work_x, work_y, work_z
     unsigned long timestamp;
-} AccelerometerSample;
+};
 
 class SensorManager {
 public:
@@ -16,12 +18,12 @@ public:
     bool inspectTreeShaking();
 
 private:
+    Adafruit_MPU6050 mpu;
     float weight;
     float totalWorkX;
     float totalWorkY;
     float totalWorkZ;
     float totalWork;
-    Adafruit_MPU6050 mpu;
 };
 
 #endif // SENSOR_H

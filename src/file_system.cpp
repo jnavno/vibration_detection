@@ -1,10 +1,10 @@
 #include "file_system.h"
 #include "sensor.h"
+#include "config.h"
 
 void initFileSystem() {
     if (!SPIFFS.begin(true)) {
         Serial.println("Failed to mount SPIFFS filesystem");
-        // Optionally, you could reformat or attempt to handle the error differently
     } else {
         Serial.println("SPIFFS filesystem mounted successfully");
     }
