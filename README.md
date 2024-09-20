@@ -69,7 +69,7 @@ Here are some images of the current prototype:
 
 | Function                     | GPIO Number | Pin Description                |
 |------------------------------|-------------|--------------------------------|
-| **LED Pin**                  | 3           | Debugging LED                  |
+| **LED Pin**                  | 3           | Debugging LED (add 22KΩ)   |
 | **Interrupt Pin**            | 7           | External Interrupt             |
 | **Accelerometer Power Pin**  | 5           | Power control for accelerometer|
 | **I2C SDA**                  | 41          | I2C Data (SDA)                 |
