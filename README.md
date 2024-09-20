@@ -17,6 +17,13 @@ This project implements an accelerometer-based system to detect specific vibrati
 
 ---
 
+### Basic Flow:
+
+    Interrupt on GPIO7 wakes up the device.
+    The accelerometer will be powered on.
+    The system will read data, then power off the accelerometer.
+    GPIO7 will be re-enabled for future interrupts, and the system will enter deep sleep mode.
+
 #### Components
 - **[ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html) | [Heltec V3](https://heltec.org/project/wifi-lora-32-v3/)**: Manages system operations, sensor interfacing, and data logging.
 - **[GY-521 MPU6050](https://www.hotmcu.com/gy521-mpu6050-3axis-acceleration-gyroscope-6dof-module-p-83.html)**: Accelerometer sensor for measuring movements on the 3 axis.
