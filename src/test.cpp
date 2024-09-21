@@ -11,8 +11,8 @@
 #define SLOW_BLINK_DELAY 1000        // Slow blink delay in milliseconds
 #define DATA_STREAM_DURATION 2000    // Duration for data streaming in milliseconds
 #define NO_DATA_STREAM_DURATION 1000 // Duration for no data streaming in milliseconds
-#define PRE_TOGGLE_DELAY 1000        // Increased delay before toggling accel power
-#define INIT_DELAY 500               // Delay after powering on the accelerometer
+#define PRE_TOGGLE_DELAY 1500        // Increased delay before toggling accel power
+#define INIT_DELAY 1000               // Delay after powering on the accelerometer
 #define CYCLE_COUNT 3                // Number of cycles for reading data
 
 RTC_DATA_ATTR int cycleCount = 0;    // Keep track of completed cycles during reboots
@@ -34,6 +34,7 @@ void setup() {
     pinMode(LED_PIN, OUTPUT);  // Set LED pin as output
     pinMode(ACCEL_PWR_PIN, OUTPUT);
     pinMode(INTERRUPT_PIN, INPUT_PULLUP);  // Set interrupt pin as input
+    Wire.setClock(100000);  // Set I2C to 100kHz to improve reliability
     delay(2000);
 
     // Increment boot count for each wake-up
@@ -127,7 +128,7 @@ void toggleAccelPower(bool state) {
 // New function to handle complete power cycle of MPU6050
 void powerCycleMPU() {
     toggleAccelPower(false);  // Turn off MPU6050
-    delay(500);               // Wait for the MPU to power down fully
+    delay(1000);               // Wait for the MPU to power down fully
     toggleAccelPower(true);   // Turn MPU6050 back on
     delay(PRE_TOGGLE_DELAY);  // Allow time for the MPU to power back up
 }
@@ -146,6 +147,7 @@ bool initializeMPU() {
 
 void readAccelerometer() {
     sensors_event_t a, g, temp;
+delay(10);
     if (mpu.getEvent(&a, &g, &temp)) {
         // Print accelerometer data
         Serial.print("X: ");
@@ -161,6 +163,7 @@ void readAccelerometer() {
     } else {
         Serial.println("Failed to read from MPU6050");
     }
+
 }
 
 // Enter deep sleep and enable the interrupt for the next wake-up
