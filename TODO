@@ -1,4 +1,12 @@
 TODO:
+
+-current measurements idle and computing Work values+sending over lora( write small snippet) on batt only
+
+-create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050
+
+- Decide whether mosfet is needed after all. list pros and cons anyway
+
+
 Data Collection and Storage:
 Within inspectTreeShaking(), collect accelerometer data during each sampling cycle.
 Store the accelerometer data in a suitable data structure.
