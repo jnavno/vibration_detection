@@ -37,9 +37,9 @@ bool evaluateThreshold(float totalWork, int stage);
 bool checkFIFOOverflow();
 
 // Constants for Thresholds
-#define FIRST_THRESHOLD 100.0
-#define SECOND_THRESHOLD 200.0
-#define THIRD_THRESHOLD 300.0
+#define FIRST_THRESHOLD 650.0
+#define SECOND_THRESHOLD 750.0
+#define THIRD_THRESHOLD 7500.0
 
 void setup() {
     Serial.begin(115200);
@@ -130,14 +130,14 @@ void blinkLED(int delayTime) {
 }
 
 void toggleAccelPower(bool state) {
-    digitalWrite(ACCEL_PWR_PIN, state ? HIGH : LOW);
+    digitalWrite(ACCEL_PWR_PIN, state ? LOW : HIGH);
 }
 
 // Power cycle the MPU6050
 void powerCycleMPU() {
-    toggleAccelPower(false);  // Turn off MPU6050
+    toggleAccelPower(false);  // Turn off MPU6050 (P-CHANNEL mosfet)
     delay(1000);              // Wait for the MPU to power down
-    toggleAccelPower(true);   // Turn MPU6050 back on
+    toggleAccelPower(true);   // Turn MPU6050 back on (P-CHANNEL mosfet)
     delay(PRE_TOGGLE_DELAY);  // Allow time for the MPU to power up
 }
 

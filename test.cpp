@@ -89,9 +89,9 @@ void setup() {
 
         if (i < CYCLE_COUNT - 1) {
             // Power cycle the accelerometer for the next reading
-            toggleAccelPower(false);
-            delay(PRE_TOGGLE_DELAY);
             toggleAccelPower(true);
+            delay(PRE_TOGGLE_DELAY);
+            toggleAccelPower(false);
             delay(PRE_TOGGLE_DELAY);
 
             if (!initializeMPU()) {
@@ -125,11 +125,11 @@ void toggleAccelPower(bool state) {
     digitalWrite(ACCEL_PWR_PIN, state ? HIGH : LOW);
 }
 
-// New function to handle complete power cycle of MPU6050
+// Handles complete power cycle of MPU6050 using irf9540 p-channel mosfet
 void powerCycleMPU() {
-    toggleAccelPower(false);  // Turn off MPU6050
+    toggleAccelPower(true);  // Turn off MPU6050
     delay(1000);               // Wait for the MPU to power down fully
-    toggleAccelPower(true);   // Turn MPU6050 back on
+    toggleAccelPower(false);   // Turn MPU6050 back on
     delay(PRE_TOGGLE_DELAY);  // Allow time for the MPU to power back up
 }
 
