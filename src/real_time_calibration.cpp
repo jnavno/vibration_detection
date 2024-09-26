@@ -3,46 +3,48 @@
 #include <Wire.h>
 #include "I2Cdev.h"
 #include "MPU6050.h"
-#include "kiss_fftr.h"  // Including the local KissFFT header
+#include "kiss_fftr.h"
 
 // Pin Definitions
-#define LED_PIN 3                    // Define the LED pin (GPIO3)
-#define ACCEL_PWR_PIN 5              // Define the pin to control the MOSFET
-#define INTERRUPT_PIN GPIO_NUM_7     // GPIO7 for interrupt from the shake sensor
+#define LED_PIN 3                    
+#define ACCEL_PWR_PIN 5              
+#define INTERRUPT_PIN GPIO_NUM_7     
 
 // Timing Definitions
-#define SAMPLES 128                  // Number of samples for FFT analysis
-#define PHASE_DURATION 10000         // 10 seconds for each phase (adjusted to avoid overflow)
-#define NUM_PHASES 4                 // Total number of recording phases
-#define PRE_TOGGLE_DELAY 1500        // Delay before toggling accel power
-#define INIT_DELAY 1000              // Delay after powering on the accelerometer
-#define BLOCK_SIZE 32                // Reading data from FIFO in blocks of 32 bytes
+#define SAMPLES 128                  
+#define PHASE_DURATION 30000         // 30 seconds for each phase
+#define NUM_PHASES 3                 // Total number of recording phases
+#define BLOCK_SIZE 32                
+#define SAMPLE_RATE 50               // 50 Hz sample rate
+#define MAX_SAMPLES (SAMPLE_RATE * (PHASE_DURATION / 1000))  // 1500 samples for 30s at 50Hz
+#define FILENAME_FORMAT "/data_phase_%d.csv"
 
 // MPU6050 Object
 MPU6050 mpu;
-volatile bool wakeup_flag = false;   // Flag to track wake-up by interrupt
+volatile bool wakeup_flag = false;  
+
+// FFT-related variables
+float inputBuffer[MAX_SAMPLES];    
+kiss_fft_cpx fftOutput[SAMPLES / 2 + 1];  
 
 // Function Prototypes
 bool initializeMPU();
-void readAccelerometerDataForFFT();
+void readAccelerometerDataForPhase(int phase);
 void performFFT(float* inputBuffer, size_t length);
 bool checkFIFOOverflow();
 void powerCycleMPU();
-void logDataToSPIFFS(float* data, size_t length);
+void logDataToSPIFFS(float* data, size_t length, int phase);
 void setupSPIFFS();
-
-// FFT-related variables
-float inputBuffer[SAMPLES];    // Input buffer for accelerometer data
-kiss_fft_cpx fftOutput[SAMPLES / 2 + 1];  // Output of FFT
+void sendFileOverSerial(int phase);
 
 void setup() {
     Serial.begin(115200);
-    pinMode(LED_PIN, OUTPUT);  // Set LED pin as output
+    pinMode(LED_PIN, OUTPUT);  
     pinMode(ACCEL_PWR_PIN, OUTPUT);
-    pinMode(INTERRUPT_PIN, INPUT_PULLUP);  // Set interrupt pin as input
+    pinMode(INTERRUPT_PIN, INPUT_PULLUP);  
 
     Wire.begin(41, 42);
-    Wire.setClock(100000);  // Set I2C to 100kHz for stability
+    Wire.setClock(100000);  
     delay(2000);
 
     // Initialize SPIFFS
@@ -52,63 +54,68 @@ void setup() {
     powerCycleMPU();
 
     // Initialize MPU6050
-    initializeMPU();
+    if (!initializeMPU()) {
+        Serial.println("MPU6050 initialization failed.");
+        while (1);  // Halt if MPU initialization fails
+    }
 
     Serial.println("Starting vibration recording phases...");
 }
 
 void loop() {
-    // Perform 4 recording phases, each 10 seconds long
+    // Run through the 3 phases, each of 30 seconds
     for (int phase = 1; phase <= NUM_PHASES; phase++) {
-        Serial.print("Recording phase ");
-        Serial.println(phase);
+        Serial.printf("Recording phase %d...\n", phase);
+
+        // Power cycle MPU before starting phase
+        powerCycleMPU();
 
         // Collect and process accelerometer data
-        readAccelerometerDataForFFT();
+        readAccelerometerDataForPhase(phase);
 
-        // Wait for the next phase
-        delay(PHASE_DURATION);
+        // Log data to SPIFFS
+        logDataToSPIFFS(inputBuffer, MAX_SAMPLES, phase);
+
+        // Send the file over serial after logging
+        sendFileOverSerial(phase);
+
+        // Wait before the next phase
+        Serial.printf("Phase %d complete. Waiting before next phase...\n", phase);
+        delay(5000);  // Delay between phases
     }
 
-    // Indicate that calibration is complete
-    Serial.println("Vibration recording complete. Ready for analysis.");
-    delay(60000);  // Wait a minute before repeating
+    Serial.println("All phases complete. Waiting for next run...");
+    delay(60000);  // Delay before starting the next recording cycle
 }
 
-// Initialize MPU6050 with proper FIFO configuration
 bool initializeMPU() {
     mpu.initialize();
-
     if (!mpu.testConnection()) {
         Serial.println("MPU6050 connection failed");
         return false;
     }
 
     // Reset and configure FIFO
-    mpu.setFIFOEnabled(false);     // Disable FIFO to configure it
-    mpu.resetFIFO();               // Clear FIFO buffer
-    mpu.setAccelFIFOEnabled(true); // Enable accelerometer FIFO
-    mpu.setFIFOEnabled(true);      // Enable FIFO
+    mpu.setFIFOEnabled(false);     
+    mpu.resetFIFO();               
+    mpu.setAccelFIFOEnabled(true); 
+    mpu.setFIFOEnabled(true);      
 
-    // Set sample rate to 5Hz (for example)
-    mpu.setRate(199);
+    // Set sample rate to ~50Hz
+    mpu.setRate(19);  // (1kHz / (1 + rate)) => 50Hz
 
-    // Optionally set accelerometer range (default is ±2g)
+    // Set accelerometer range (±2g by default)
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
 
     delay(1000);  // Allow MPU to settle
     return true;
 }
 
-void toggleAccelPower(bool state) {
-    digitalWrite(ACCEL_PWR_PIN, state ? LOW : HIGH);
-}
-
 void powerCycleMPU() {
-    toggleAccelPower(false);  // Turn off MPU6050 (P-CHANNEL mosfet)
-    delay(1000);              // Wait for the MPU to power down
-    toggleAccelPower(true);   // Turn MPU6050 back on (P-CHANNEL mosfet)
-    delay(PRE_TOGGLE_DELAY);  // Allow time for the MPU to power up
+    digitalWrite(ACCEL_PWR_PIN, LOW);  
+    delay(1000);                      
+    digitalWrite(ACCEL_PWR_PIN, HIGH); 
+    delay(1500);                      
 }
 
 void setupSPIFFS() {
@@ -119,80 +126,74 @@ void setupSPIFFS() {
     Serial.println("SPIFFS mounted successfully");
 }
 
-void logDataToSPIFFS(float* data, size_t length) {
-    File file = SPIFFS.open("/data.txt", FILE_APPEND);
+void readAccelerometerDataForPhase(int phase) {
+    uint8_t fifoBuffer[BLOCK_SIZE];  
+    int16_t accelX, accelY, accelZ;
+    int samplesRead = 0;  
+
+    unsigned long startMillis = millis();  
+    while (millis() - startMillis < PHASE_DURATION) {
+        uint16_t fifoCount = mpu.getFIFOCount();  
+
+        if (fifoCount >= BLOCK_SIZE) {
+            mpu.getFIFOBytes(fifoBuffer, BLOCK_SIZE);  
+
+            for (int i = 0; i <= BLOCK_SIZE - 6 && samplesRead < MAX_SAMPLES; i += 6) {
+                accelX = (fifoBuffer[i] << 8) | fifoBuffer[i + 1];
+                accelY = (fifoBuffer[i + 2] << 8) | fifoBuffer[i + 3];
+                accelZ = (fifoBuffer[i + 4] << 8) | fifoBuffer[i + 5];
+
+                inputBuffer[samplesRead++] = accelX / 16384.0;  // Convert to g-force
+                if (samplesRead >= MAX_SAMPLES) break;  
+            }
+
+            mpu.resetFIFO();  
+        }
+
+        delay(1000 / SAMPLE_RATE);  
+    }
+
+    Serial.printf("Phase %d: Collected %d samples\n", phase, samplesRead);
+}
+
+void logDataToSPIFFS(float* data, size_t length, int phase) {
+    char filename[32];
+    snprintf(filename, sizeof(filename), FILENAME_FORMAT, phase);
+
+    File file = SPIFFS.open(filename, FILE_WRITE);
     if (!file) {
         Serial.println("Failed to open file for writing");
         return;
     }
 
+    file.println("Time(s), X-axis (g)");  
+
     for (size_t i = 0; i < length; i++) {
-        file.println(data[i]);
+        file.printf("%f,%f\n", (i / SAMPLE_RATE), data[i]);  
     }
 
     file.close();
+    Serial.printf("Data saved to %s\n", filename);
 }
 
-void readAccelerometerDataForFFT() {
-    uint8_t fifoBuffer[BLOCK_SIZE];  // Block size for reading FIFO in small chunks
-    int16_t accelX, accelY, accelZ;
-    int samplesRead = 0;  // Counter for how many samples have been read
-    float inputBuffer[SAMPLES];  // Input buffer for FFT processing
+void sendFileOverSerial(int phase) {
+    char filename[32];
+    snprintf(filename, sizeof(filename), FILENAME_FORMAT, phase);
 
-    while (samplesRead < SAMPLES) {
-        uint16_t fifoCount = mpu.getFIFOCount();  // Get the current FIFO count
-        Serial.print("FIFO count: ");
-        Serial.println(fifoCount);
-
-        if (fifoCount == 0) {
-            Serial.println("No data in FIFO.");
-            delay(100);  // Small delay to allow more data to accumulate
-            continue;
-        }
-
-        // Check for FIFO overflow
-        if (checkFIFOOverflow()) {
-            Serial.println("FIFO overflow detected. Resetting FIFO.");
-            mpu.resetFIFO();  // Reset FIFO if overflow is detected
-            samplesRead = 0;  // Restart sample reading due to overflow
-            break;
-        }
-
-        // Read in BLOCK_SIZE chunks while we have enough data in the FIFO
-        while (fifoCount >= BLOCK_SIZE && samplesRead < SAMPLES) {
-            mpu.getFIFOBytes(fifoBuffer, BLOCK_SIZE);  // Read FIFO data
-            fifoCount -= BLOCK_SIZE;  // Decrease the count by the block size
-
-            // Process accelerometer data (6 bytes per reading: X, Y, Z)
-            for (int i = 0; i <= BLOCK_SIZE - 6 && samplesRead < SAMPLES; i += 6) {
-                accelX = (fifoBuffer[i] << 8) | fifoBuffer[i + 1];
-                accelY = (fifoBuffer[i + 2] << 8) | fifoBuffer[i + 3];
-                accelZ = (fifoBuffer[i + 4] << 8) | fifoBuffer[i + 5];
-
-                // Store X-axis data in the input buffer for FFT processing
-                inputBuffer[samplesRead] = accelX / 16384.0;  // Convert raw value to g-force
-                samplesRead++;
-            }
-        }
-
-        // Reset the FIFO after every read to clear out old data
-        mpu.resetFIFO();
-        Serial.println("FIFO reset after data read.");
-
-        // Delay between readings to mimic the original 11-second inspection period
-        delay(1000);  // Adjust this delay to manage the flow of data correctly
+    File file = SPIFFS.open(filename, FILE_READ);
+    if (!file) {
+        Serial.println("Failed to open file for reading");
+        return;
     }
 
-    // Perform FFT once enough samples are collected
-    if (samplesRead == SAMPLES) {
-        Serial.println("Performing FFT...");
-        performFFT(inputBuffer, SAMPLES);
+    Serial.printf("Sending file: %s\n", filename);
+    while (file.available()) {
+        Serial.write(file.read());
     }
+
+    file.close();
+    Serial.println("\nFile transfer complete.");
 }
-
-
-
-
 
 // Function to check for FIFO overflow
 bool checkFIFOOverflow() {
@@ -203,7 +204,7 @@ bool checkFIFOOverflow() {
     return false;
 }
 
-// Function to perform FFT using kissfft
+// Function to perform FFT using kissfft (optional, if needed)
 void performFFT(float* inputBuffer, size_t length) {
     kiss_fftr_cfg cfg = kiss_fftr_alloc(length, 0, NULL, NULL);
     if (cfg == NULL) {
@@ -211,18 +212,13 @@ void performFFT(float* inputBuffer, size_t length) {
         return;
     }
 
-    // Perform the FFT
     kiss_fftr(cfg, inputBuffer, fftOutput);
 
-    // Display the results of the FFT (real components)
     Serial.println("Frequency components (Hz):");
     for (size_t i = 0; i < length / 2 + 1; i++) {
-        // Convert bin to frequency and output the real magnitude
         float frequency = (float)i * 1000.0 / SAMPLES;
-        Serial.print(frequency);
-        Serial.print(" Hz: ");
-        Serial.println(fftOutput[i].r);  // Real part
+        Serial.printf("%f Hz: %f\n", frequency, fftOutput[i].r);  
     }
 
-    free(cfg);  // Free the FFT configuration
+    free(cfg);
 }
