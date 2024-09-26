@@ -48,7 +48,7 @@ void setup() {
     pinMode(INTERRUPT_PIN, INPUT_PULLUP);  // Set interrupt pin as input
 
     Wire.begin(41, 42);
-    Wire.setClock(100000);  // Set I2C to 100kHz for stability
+    Wire.setClock(30000);  // Set I2C to 100kHz for stability
     delay(2000);
 
     // Increment boot count for each wake-up
@@ -133,13 +133,13 @@ void toggleAccelPower(bool state) {
     digitalWrite(ACCEL_PWR_PIN, state ? LOW : HIGH);
 }
 
-// Power cycle the MPU6050
 void powerCycleMPU() {
-    toggleAccelPower(false);  // Turn off MPU6050 (P-CHANNEL mosfet)
-    delay(1000);              // Wait for the MPU to power down
-    toggleAccelPower(true);   // Turn MPU6050 back on (P-CHANNEL mosfet)
-    delay(PRE_TOGGLE_DELAY);  // Allow time for the MPU to power up
+    digitalWrite(ACCEL_PWR_PIN, LOW);  // Turn off MPU6050
+    delay(2000);  // Ensure sufficient time for power-down
+    digitalWrite(ACCEL_PWR_PIN, HIGH); // Power back on
+    delay(2500);  // Allow sufficient time for MPU6050 to stabilize after powering on
 }
+
 
 // Initialize MPU6050 with proper FIFO configuration
 bool initializeMPU() {
@@ -251,4 +251,32 @@ void enterDeepSleep() {
     attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), handleWakeUpInterrupt, RISING);
     esp_sleep_enable_ext0_wakeup(INTERRUPT_PIN, 1);  // Enable wakeup on GPIO7
     esp_deep_sleep_start();
+}
+
+void scanI2CDevices() {
+    byte error, address;
+    int nDevices;
+
+    Serial.println("Scanning...");
+
+    nDevices = 0;
+    for (address = 1; address < 127; address++ ) {
+        Wire.beginTransmission(address);
+        error = Wire.endTransmission();
+
+        if (error == 0) {
+            Serial.print("I2C device found at address 0x");
+            if (address < 16) Serial.print("0");
+            Serial.print(address, HEX);
+            Serial.println(" !");
+            nDevices++;
+        } else if (error == 4) {
+            Serial.print("Unknown error at address 0x");
+            if (address < 16) Serial.print("0");
+            Serial.println(address, HEX);
+        }
+    }
+
+    if (nDevices == 0) Serial.println("No I2C devices found\n");
+    else Serial.println("done\n");
 }

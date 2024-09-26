@@ -4,7 +4,7 @@
 ---
 
 #### Overview
-This project implements FFT (Fast Fourier Transform) to identify the dominant frequencies in a vibration sensor (accelerometer) to detect specific events ocurring on trees. Cattering only to patterns that coud indicate continuous sharp spikes, like a machete cuts, or slightly lower-frecuency vibrations like a chainsaw or a handsaw. The systems evaluates to indicate potential threats to trees and sends an alarm accordingly. The device is able to detect threads with minimal power consumption compared to strategies such as sound analysis. It utilizes an ESP32 S3 microcontroller, Adafruit MPU6050 accelerometer, and SPIFFS filesystem for data storage.
+This project implements FFT (Fast Fourier Transform) to identify the dominant frequencies in a vibration sensor (accelerometer) to detect specific events ocurring on trees. Cattering only to patterns that coud indicate continuous sharp spikes, like machete cuts, or slightly lower-frecuency vibrations like a chainsaw or a handsaw. The systems evaluates to indicate potential threats to trees and sends an alarm accordingly. The device is able to detect threads with minimal power consumption compared to strategies such as sound analysis. It utilizes an ESP32-S3 microcontroller, MPU6050 accelerometer, and SPIFFS filesystem for data storage.
 
 ---
 
