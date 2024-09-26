@@ -20,15 +20,13 @@
 1. Clone the project repository.
 
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/jnavno/vibration_detection.git
     cd <project-directory>
     ```
 
 2. Open the `real_time_calibration.cpp` file in your preferred IDE (Arduino IDE/PlatformIO).
 
 3. Connect the ESP32 to your computer using the USB cable.
-
-4. Flash the `real_time_calibration.cpp` to the ESP32.
 
 ---
 
@@ -42,7 +40,13 @@
     pip3 install pyserial
     ```
 
-3. Run the Python script to listen to the serial port and capture the incoming CSV data:
+3. flash the firmware onto the device:
+
+    ```bash
+    pio run --target upload
+    ```
+
+4. Do not use the PlatformIO serial monitor after uploading. Instead, directly use your Python script to read the data from the device via the serial port:
 
     ```bash
     python3 esp_data_retrieval.py
