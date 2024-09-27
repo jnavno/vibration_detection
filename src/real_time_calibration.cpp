@@ -8,22 +8,25 @@
 #define LED_PIN 3
 #define ACCEL_PWR_PIN 5
 #define INTERRUPT_PIN GPIO_NUM_7
+#define STATUS_LED_PIN 4 // LED for quick blink after the limit is reached
 
 // Timing Definitions
 #define SAMPLES 128
 #define PHASE_DURATION 30000 // 30 seconds for each phase
-#define NUM_PHASES 3
+#define CYCLES_FOR_5_MIN 10  // 5 minutes = 10 cycles of 30 seconds
 #define BLOCK_SIZE 32
 #define SAMPLE_RATE 50
 #define MAX_SAMPLES (SAMPLE_RATE * (PHASE_DURATION / 1000))
 #define FILENAME_FORMAT "/data_phase_%d.csv"
 #define PRE_TOGGLE_DELAY 1500 // Delay before toggling accelerometer power
+#define MAX_SPIFFS_USAGE 30000 // Max limit of used space in bytes (30KB)
 
 // MPU6050 Object
 MPU6050 mpu;
 volatile bool wakeup_flag = false;
 
 float inputBuffer[MAX_SAMPLES]; // Buffer for accelerometer data
+int remainingCycles = CYCLES_FOR_5_MIN;  // Track the remaining cycles
 
 // Function Prototypes
 bool initializeMPU();
@@ -37,6 +40,7 @@ void blinkLED(int delayTime);
 void SPIFFSDebug(const char *errorMessage, int phase);
 void toggleAccelPower(bool state);
 void checkSPIFFSSpace();
+void quickBlinkAndHalt();
 
 void setup()
 {
@@ -44,6 +48,7 @@ void setup()
     pinMode(LED_PIN, OUTPUT);
     pinMode(ACCEL_PWR_PIN, OUTPUT);
     pinMode(INTERRUPT_PIN, INPUT_PULLUP);
+    pinMode(STATUS_LED_PIN, OUTPUT);
 
     Wire.begin(41, 42);
     Wire.setClock(30000); // I2C clock to 30kHz for stable communication
@@ -68,9 +73,17 @@ void setup()
 
 void loop()
 {
-    for (int phase = 1; phase <= NUM_PHASES; phase++)
+    // Stop logging if the 5-minute limit (10 cycles) is reached
+    if (remainingCycles <= 0)
+    {
+        quickBlinkAndHalt();  // Blink LED and stop the system gracefully
+        return;
+    }
+
+    for (int phase = 1; phase <= CYCLES_FOR_5_MIN; phase++)
     {
         Serial.printf("Recording phase %d...\n", phase);
+        Serial.printf("%d remaining reading cycles\n", remainingCycles);
 
         bool phaseCompleted = false; // Track if the current phase completed successfully
         int retryCount = 0;          // Retry counter for the current phase
@@ -135,12 +148,12 @@ void loop()
             Serial.printf("Phase %d could not complete after 3 retries. Moving to the next phase...\n", phase);
             SPIFFSDebug("Phase not completed after retries: ", phase); // Log failure to debug
         }
-
+        remainingCycles--;
         delay(5000); // Wait before the next phase
     }
 
     Serial.println("All phases complete. Waiting for next run...");
-    delay(10000); // 10 seconds delay before repeating
+    delay(5000); // 10 seconds delay before repeating
 }
 
 void checkSPIFFSSpace() {
@@ -248,7 +261,6 @@ void readAccelerometerDataForPhase(int phase)
     }
 }
 
-
 void setupSPIFFS()
 {
     if (!SPIFFS.begin(true))
@@ -288,7 +300,25 @@ bool logDataToSPIFFS(float *data, size_t length, int phase)
     return true;
 }
 
+// Blinks the LED quickly for 30 seconds and halts further operations
+void quickBlinkAndHalt()
+{
+    Serial.println("5-minute data logging limit reached. Press reset to restart.");
 
+    // Blink the status LED quickly for 30 seconds
+    unsigned long blinkStart = millis();
+    while (millis() - blinkStart < 30000)  // 30 seconds of blinking
+    {
+        digitalWrite(STATUS_LED_PIN, HIGH);
+        delay(200);  // Blink on
+        digitalWrite(STATUS_LED_PIN, LOW);
+        delay(200);  // Blink off
+    }
+
+    // Halt further operations
+    Serial.println("Data logging halted. Press reset to restart.");
+    while (true);  // Infinite loop waiting for manual reset
+}
 
 void sendFileOverSerial(int phase)
 {
