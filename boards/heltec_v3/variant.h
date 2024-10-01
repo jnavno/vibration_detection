@@ -1,10 +1,10 @@
 #pragma once
 
 // Pin Definitions
-#define LED_PIN 3
-#define ACCEL_PWR_PIN 5
+#define LED_PIN GPIO_NUM_3
+#define VEXT_CTRL_PIN GPIO_NUM_36
 #define INTERRUPT_PIN GPIO_NUM_7
-#define STATUS_LED_PIN 4
+#define STATUS_LED_PIN GPIO_NUM_4
 
 // Timing Definitions
 #define SAMPLES 128
