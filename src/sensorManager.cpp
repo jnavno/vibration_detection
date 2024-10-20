@@ -5,12 +5,32 @@
 #include <powerManager.h>
 #include <spiffsManager.h>
 #include "SPIFFS.h"
-
+#include "FFT.h"  // Include the new FFT library
+#include "FFT_signal.h"  // Defines the input and output buffers
 
 MPU6050 mpu;
 volatile bool wakeup_flag = false;
 float inputBuffer[MAX_SAMPLES];
 int remainingCycles = CYCLES_FOR_5_MIN;
+
+// Define FFT-related constants
+#define SAMPLES 128
+#define SAMPLING_FREQUENCY 5  // 5 Hz sampling frequency (adjust as needed)
+
+// Define frequency ranges for chainsaw, axe, and handsaw detection
+#define AXE_MIN_FREQ 20.0  // Frequency range for hand axe/hatchet
+#define AXE_MAX_FREQ 60.0
+#define SAW_MIN_FREQ 5.0   // Frequency range for handsaw
+#define SAW_MAX_FREQ 30.0
+#define CHAINSAW_MIN_FREQ 50.0  // Frequency range for chainsaw
+#define CHAINSAW_MAX_FREQ 250.0
+#define SOME_THRESHOLD 0.3  // Adjust threshold as per your application
+
+float max_axe_magnitude = 0;
+float max_saw_magnitude = 0;
+float max_chainsaw_magnitude = 0;
+
+void performFFT();  // Declare your custom function
 
 void setupSensors() {
     Wire.begin(41, 42);        // Initialize I2C for MPU6050
@@ -66,6 +86,9 @@ void monitorSensors() {
             if (loggingSuccess) {
                 phaseCompleted = true;
                 powerCycleMPU(false);
+
+                // Perform FFT analysis to detect the type of cutting
+                performFFT();
             } else {
                 Serial.println("Failed to log data to SPIFFS. Retrying...");
                 SPIFFSDebug("Failed to log data for phase ", phase);
@@ -102,6 +125,63 @@ void readAccelerometerDataForPhase(int phase) {
         }
 
         delay(1000 / SAMPLE_RATE);  // Control reading rate
+    }
+}
+
+void performFFT() {
+    // Initialize FFT plan for real FFT
+    fft_config_t *real_fft_plan = fft_init(FFT_N, FFT_REAL, FFT_FORWARD, fft_input, fft_output);
+
+    // Fill the input buffer with collected accelerometer data (inputBuffer)
+    for (int i = 0; i < SAMPLES; i++) {
+        real_fft_plan->input[i] = (i < MAX_SAMPLES) ? inputBuffer[i] : 0;  // Fill remaining with 0 if less samples
+    }
+
+    // Execute the FFT
+    fft_execute(real_fft_plan);
+
+    // Reset magnitudes for each detection type
+    max_axe_magnitude = 0;
+    max_saw_magnitude = 0;
+    max_chainsaw_magnitude = 0;
+
+    // Analyze FFT results and log to serial output
+    Serial.println("FFT Results:");
+    for (int i = 1; i < (SAMPLES / 2); i++) {  // Skip the first bin (DC component)
+        float frequency = (i * SAMPLING_FREQUENCY) / SAMPLES;  // Calculate frequency for each bin
+        float magnitude = sqrt(pow(real_fft_plan->output[2 * i], 2) + pow(real_fft_plan->output[2 * i + 1], 2));
+
+        // Log frequencies and magnitudes of interest (optional)
+        Serial.printf("Frequency: %f Hz, Magnitude: %f\n", frequency, magnitude);
+
+        // Classify based on frequency range and store the max magnitude for each type
+        if (frequency >= AXE_MIN_FREQ && frequency <= AXE_MAX_FREQ) {
+            if (magnitude > max_axe_magnitude) {
+                max_axe_magnitude = magnitude;
+            }
+        } else if (frequency >= SAW_MIN_FREQ && frequency <= SAW_MAX_FREQ) {
+            if (magnitude > max_saw_magnitude) {
+                max_saw_magnitude = magnitude;
+            }
+        } else if (frequency >= CHAINSAW_MIN_FREQ && frequency <= CHAINSAW_MAX_FREQ) {
+            if (magnitude > max_chainsaw_magnitude) {
+                max_chainsaw_magnitude = magnitude;
+            }
+        }
+    }
+
+    // Clean up FFT plan to free memory
+    fft_destroy(real_fft_plan);
+
+    // Decision logic based on detected magnitudes
+    if (max_chainsaw_magnitude > SOME_THRESHOLD) {
+        Serial.println("Chainsaw cutting detected!");
+    } else if (max_axe_magnitude > SOME_THRESHOLD) {
+        Serial.println("Hand axe/hatchet cutting detected!");
+    } else if (max_saw_magnitude > SOME_THRESHOLD) {
+        Serial.println("Handsaw cutting detected!");
+    } else {
+        Serial.println("No significant cutting activity detected.");
     }
 }
 
