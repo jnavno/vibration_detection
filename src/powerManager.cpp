@@ -3,16 +3,24 @@
 #include <variant.h>
 
 void setupPower() {
-    pinMode(ACCEL_PWR_PIN, OUTPUT);
+    pinMode(VEXT_CTRL_PIN, OUTPUT);
     pinMode(STATUS_LED_PIN, OUTPUT);
+
+    digitalWrite(VEXT_CTRL_PIN, HIGH);
 }
 
 void manageBattery() {
     // Add battery monitoring logic here (if needed)
 }
 
-void toggleAccelPower(bool state) {
-    digitalWrite(ACCEL_PWR_PIN, state ? LOW : HIGH);
+void toggleSensorPower(bool state) {
+    if (state) {
+        digitalWrite(VEXT_CTRL_PIN, LOW);  // Vext ON
+        delay(PRE_TOGGLE_DELAY);           // Wait for the sensor to stabilize
+    } else {
+        digitalWrite(VEXT_CTRL_PIN, HIGH); // Vext OFF
+        delay(300);                        // Allow some time for sensor to power down
+    }
 }
 
 void quickBlinkAndHalt() {

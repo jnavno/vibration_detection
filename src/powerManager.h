@@ -2,5 +2,5 @@
 
 void setupPower();
 void manageBattery();
-void toggleAccelPower(bool state);
+void toggleSensorPower(bool state);
 void quickBlinkAndHalt();

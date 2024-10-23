@@ -16,6 +16,8 @@
 
 void setup() {
     Serial.begin(115200);
+    setupPower();  // This will handle toggling Vext to power the sensors
+    delay(2000);   // Wait for sensor to stabilize before initialization
 
     // Initialize components
     setupSensors();
