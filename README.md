@@ -4,7 +4,7 @@
 ---
 
 #### Overview
-This project implements FFT (Fast Fourier Transform) to identify the dominant frequencies in a vibration sensor (accelerometer) to detect specific events ocurring on trees. Cattering only to patterns that coud indicate continuous sharp spikes, like machete cuts, or slightly lower-frecuency vibrations like a chainsaw or a handsaw. The system evaluates to indicate potential threats to trees and sends an alarm accordingly. The device is able to detect threads with minimal power consumption compared to strategies such as sound analysis. It utilizes an ESP32-S3 microcontroller, MPU6050 accelerometer, and SPIFFS filesystem for data storage.
+This project implements FFT (Fast Fourier Transform) to identify the dominant frequencies in a vibration sensor (accelerometer) to detect specific events occurring on trees. Catering only to patterns that could indicate continuous sharp spikes, like machete cuts, or slightly lower-frequency vibrations like a chainsaw or a handsaw. The system evaluates to indicate potential threats to trees and sends an alarm accordingly. The device is able to detect threats with minimal power consumption compared to strategies such as sound analysis. It utilizes an ESP32-S3 microcontroller, MPU6050 accelerometer, and SPIFFS filesystem for data storage.
 
 ---
 
@@ -17,7 +17,7 @@ This project implements FFT (Fast Fourier Transform) to identify the dominant fr
 
 ---
 
-### Basic Flow:
+### Basic Flow
 
     Interrupt on GPIO7 wakes up the device.
     The accelerometer will be powered on.
@@ -110,22 +110,21 @@ framework = arduino
 **Active Time**: 1 minute per day
 
 - **Daily Active Consumption**:
-  \[
-  \text{Daily Active Consumption (mAh)} = \frac{100 \text{ mA} \times 60 \text{ seconds}}{3600 \text{ seconds/hour}} = \frac{6000}{3600} \approx 1.67 \text{ mAh/day}
-  \]
+
+  Daily Active Consumption (mAh) = (100 mA × 60 seconds) / 3600 seconds/hour = 6000 / 3600 ≈ 1.67 mAh/day
 
 **Deep Sleep Time**: 23 hours 59 minutes
 
 - **Deep Sleep Time in Hours**: 23.983 hours
 - **Daily Deep Sleep Consumption**:
-  \[
-  \text{Daily Deep Sleep Consumption (mAh)} = \frac{10 \text{ µA} \times 23.983 \text{ hours}}{1000} = \frac{239.83}{1000} \approx 0.24 \text{ mAh/day}
-  \]
+
+  Daily Deep Sleep Consumption (mAh) = (10 µA × 23.983 hours) / 1000 = 239.83 / 1000 ≈ 0.24 mAh/day
 
 **Total Daily Consumption**:
-  \[
-  \text{Total Daily Consumption (mAh)} = 1.67 \text{ mAh} + 0.24 \text{ mAh} \approx 1.91 \text{ mAh/day}
-  \]
+
+  Total Daily Consumption (mAh) = 1.67 mAh + 0.24 mAh ≈ 1.91 mAh/day
+
+---
 
 ### 2. Calculate Battery Life with a 2000 mAh Battery
 
@@ -134,16 +133,17 @@ framework = arduino
 - **Battery Capacity**: 2000 mAh
 
 **Daily Battery Life**:
-  \[
-  \text{Daily Battery Life (days)} = \frac{2000 \text{ mAh}}{1.91 \text{ mAh/day}} \approx 1047.12 \text{ days}
-  \]
+
+  Daily Battery Life (days) = 2000 mAh / 1.91 mAh/day ≈ 1047.12 days
 
 **Battery Life in Years**:
-  \[
-  \text{Battery Life (years)} = \frac{1047.12 \text{ days}}{365.25 \text{ days/year}} \approx 2.87 \text{ years}
-  \]
+
+  Battery Life (years) = 1047.12 days / 365.25 days/year ≈ 2.87 years
+
+---
 
 So, with a 2000 mAh battery, the system would last approximately **2.87 years** under the given usage scenario.
+
 ---
 
 #### License
