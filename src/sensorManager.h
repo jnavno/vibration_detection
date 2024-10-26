@@ -7,7 +7,7 @@ extern volatile bool wakeup_flag;
 extern int remainingCycles;
 extern float inputBuffer[];
 
-void setupSensors();
+bool setupSensors();
 void monitorSensors();
 bool initializeMPU();
 void readAccelerometerDataForPhase(int phase);

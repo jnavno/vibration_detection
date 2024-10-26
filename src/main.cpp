@@ -16,15 +16,25 @@
 
 void setup() {
     Serial.begin(115200);
-    setupPower();  // This will handle toggling Vext to power the sensors
-    delay(2000);   // Wait for sensor to stabilize before initialization
+    Serial.println("Starting setup...");
 
-    // Initialize components
-    setupSensors();
-    setupSPIFFS();
-    setupPower();
-    setupCommands();
+    setupPower();               // Power up Vext
+    delay(3000);                // Allow extra time for MPU6050 to stabilize
+
+    if (!setupSensors()) {      // Initialize sensors and check for success
+        Serial.println("Sensor setup failed. Restarting...");
+        while (1);              // Halt if setup fails, for debugging
+    }
+
+    Serial.println("Setting up SPIFFS...");
+    setupSPIFFS();              // Only set up SPIFFS after sensor initialization
+
+    Serial.println("Setting up commands...");
+    setupCommands();            // Initialize command handler for serial commands
+    Serial.println("Setup complete.");
 }
+
+
 
 void loop() {
     handleSerialCommands();   // Handle incoming serial commands
