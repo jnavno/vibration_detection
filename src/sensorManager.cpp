@@ -17,14 +17,18 @@ int remainingCycles = CYCLES_FOR_5_MIN;
 float max_axe_magnitude = 0;
 float max_saw_magnitude = 0;
 float max_chainsaw_magnitude = 0;
+float max_machete_magnitude = 0;  // New variable for machete impact detection
 
-#define SAMPLING_FREQUENCY 5  // Sampling frequency (adjust as needed)
+#define SAMPLING_FREQUENCY 5       // Sampling frequency (adjust as needed)
 #define AXE_MIN_FREQ 20.0
 #define AXE_MAX_FREQ 60.0
 #define SAW_MIN_FREQ 5.0
 #define SAW_MAX_FREQ 30.0
 #define CHAINSAW_MIN_FREQ 50.0
 #define CHAINSAW_MAX_FREQ 250.0
+#define MACHETE_MIN_FREQ 1.0       // Machete impact detection range
+#define MACHETE_MAX_FREQ 3.0
+#define MACHETE_THRESHOLD 5.0      // Threshold for machete impact detection
 #define SOME_THRESHOLD 0.3
 
 // Declare the performFFT function
@@ -45,7 +49,6 @@ bool setupSensors() {
     Serial.println("MPU6050 successfully initialized.");
     return true;  // Return true if initialization succeeds
 }
-
 
 bool initializeMPU() {
     mpu.initialize();
@@ -146,6 +149,7 @@ void performFFT() {
     float max_axe_magnitude = 0;
     float max_saw_magnitude = 0;
     float max_chainsaw_magnitude = 0;
+    float max_machete_magnitude = 0;  // For machete impact detection
 
     Serial.println("FFT Results:");
     for (int i = 1; i < (SAMPLES / 2); i++) {
@@ -160,12 +164,17 @@ void performFFT() {
             if (magnitude > max_saw_magnitude) max_saw_magnitude = magnitude;
         } else if (frequency >= CHAINSAW_MIN_FREQ && frequency <= CHAINSAW_MAX_FREQ) {
             if (magnitude > max_chainsaw_magnitude) max_chainsaw_magnitude = magnitude;
+        } else if (frequency >= MACHETE_MIN_FREQ && frequency <= MACHETE_MAX_FREQ) {  // Machete detection
+            if (magnitude > max_machete_magnitude) max_machete_magnitude = magnitude;
         }
     }
 
     fft_destroy(real_fft_plan);
 
-    if (max_chainsaw_magnitude > SOME_THRESHOLD) {
+    // Decision logic for different detections
+    if (max_machete_magnitude > MACHETE_THRESHOLD) {
+        Serial.println("Machete impact detected!");
+    } else if (max_chainsaw_magnitude > SOME_THRESHOLD) {
         Serial.println("Chainsaw cutting detected!");
     } else if (max_axe_magnitude > SOME_THRESHOLD) {
         Serial.println("Hand axe/hatchet cutting detected!");
