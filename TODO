@@ -1,21 +1,24 @@
 TODO:
 
--current measurements idle and computing Work values+sending over lora( write small snippet) on batt only
+- implement deep sleep cycling
+- Fine tune the detection frequency for machete and handsaw
 
--create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050
+-current measurements idle and computing Work values+sending over lora( write small snippet) on batt only DONE
 
-- Decide whether mosfet is needed after all. list pros and cons anyway
+-create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050 DONE
+
+- Decide whether mosfet is needed after all. list pros and cons anyway DONE
 
 
 Data Collection and Storage:
 Within inspectTreeShaking(), collect accelerometer data during each sampling cycle.
 Store the accelerometer data in a suitable data structure.
 
-Batch Creation:
+Batch Creation:DONE
 Define conditions for creating a batch (e.g., number of cycles before going to sleep, sufficient vibration data).
 Create batches of data that include accelerometer values, sampling cycle references, and timestamps.
 
-Excel File Handling:
+Excel File Handling:DONE
 Implement functionality to write batches to an Excel file stored locally on the ESP32S3 memory.
 You may need to explore libraries or develop your own functions to handle Excel file operations in C.
 

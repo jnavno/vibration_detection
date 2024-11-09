@@ -5,21 +5,26 @@
 #include <powerManager.h>
 #include <spiffsManager.h>
 #include "SPIFFS.h"
-#include "FFT.h"  // FFT library
-#include "FFT_signal.h"  // FFT input/output buffer
+#include "FFT.h"
+#include "FFT_signal.h"
 
 MPU6050 mpu;
 volatile bool wakeup_flag = false;
 float inputBuffer[MAX_SAMPLES];
 int remainingCycles = CYCLES_FOR_5_MIN;
 
-// Declare variables for FFT thresholds and frequencies
+// FFT thresholds and frequencies
 float max_axe_magnitude = 0;
 float max_saw_magnitude = 0;
 float max_chainsaw_magnitude = 0;
-float max_machete_magnitude = 0;  // New variable for machete impact detection
+float max_machete_magnitude = 0;
 
-#define SAMPLING_FREQUENCY 5       // Sampling frequency (adjust as needed)
+#define SAMPLING_FREQUENCY 5       // Adjustable
+// Sampling Frequency = 1000 / (1 + Rate Divider)
+// With mpu.setRate(99), the sampling frequency is 10 Hz (1000 / (1 + 99)).
+// If a 5 Hz sampling rate is intended, set Rate Divider to 199 with mpu.setRate(199),
+// which would yield 5 Hz (1000 / (1 + 199)), aligning with the defined SAMPLING_FREQUENCY.
+
 #define AXE_MIN_FREQ 20.0
 #define AXE_MAX_FREQ 60.0
 #define SAW_MIN_FREQ 5.0
@@ -31,42 +36,42 @@ float max_machete_magnitude = 0;  // New variable for machete impact detection
 #define MACHETE_THRESHOLD 5.0      // Threshold for machete impact detection
 #define SOME_THRESHOLD 0.3
 
-// Declare the performFFT function
 void performFFT();
 
 bool setupSensors() {
     powerCycleMPU(true);  // Power on the MPU via Vext
-    delay(2000);          // Increased delay to ensure full power-up
+    delay(2000);          // Increased delay to ensure good power-up
 
-    Wire.begin(38, 1);   // Initialize I2C for MPU6050
-    Wire.setClock(100000); // Set I2C clock speed for stability
+    Wire.begin(38, 1);   // 41, 42 for prototype design
+    Wire.setClock(100000); // Required for I2C transfers stability
 
     if (!initializeMPU()) {
         Serial.println("MPU6050 initialization failed in setupSensors.");
-        return false;  // Return false if initialization fails
+        return false;
     }
 
     Serial.println("MPU6050 successfully initialized.");
-    return true;  // Return true if initialization succeeds
+    return true;
 }
 
 bool initializeMPU() {
     mpu.initialize();
-    delay(100);  // Small delay for MPU stability check
+    delay(100);  // Keep this for MPU stability
     if (!mpu.testConnection()) {
         Serial.println("MPU6050 connection failed.");
         return false;
     }
     Serial.println("MPU6050 connected");
 
-    // Configure the FIFO for accelerometer data
+    // FIFO for accelerometer data configuration
     mpu.setFIFOEnabled(false);
     mpu.resetFIFO();
     mpu.setAccelFIFOEnabled(true);
     mpu.setFIFOEnabled(true);
-    mpu.setRate(99);                                // ~5Hz sampling rate
+    mpu.setRate(99);                                // ~10Hz sampling rate
+    //mpu.setRate(199);                               // ~5Hz sampling rate
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2); // ±2g range
-    delay(1000);                                    // Wait for MPU to stabilize
+    delay(1000);                                    // Keep this to stabilize MPU
     return true;
 }
 
@@ -109,7 +114,7 @@ void monitorSensors() {
             }
         }
         remainingCycles--;
-        delay(5000);  // Wait before next phase
+        delay(5000);  // Keep this for MPU regeneration
     }
 }
 
@@ -149,7 +154,7 @@ void performFFT() {
     float max_axe_magnitude = 0;
     float max_saw_magnitude = 0;
     float max_chainsaw_magnitude = 0;
-    float max_machete_magnitude = 0;  // For machete impact detection
+    float max_machete_magnitude = 0;
 
     Serial.println("FFT Results:");
     for (int i = 1; i < (SAMPLES / 2); i++) {
@@ -164,7 +169,7 @@ void performFFT() {
             if (magnitude > max_saw_magnitude) max_saw_magnitude = magnitude;
         } else if (frequency >= CHAINSAW_MIN_FREQ && frequency <= CHAINSAW_MAX_FREQ) {
             if (magnitude > max_chainsaw_magnitude) max_chainsaw_magnitude = magnitude;
-        } else if (frequency >= MACHETE_MIN_FREQ && frequency <= MACHETE_MAX_FREQ) {  // Machete detection
+        } else if (frequency >= MACHETE_MIN_FREQ && frequency <= MACHETE_MAX_FREQ) {
             if (magnitude > max_machete_magnitude) max_machete_magnitude = magnitude;
         }
     }
@@ -195,6 +200,6 @@ bool checkFIFOOverflow() {
 }
 
 void powerCycleMPU(bool on) {
-    toggleSensorPower(on);  // Control MPU power
+    toggleSensorPower(on);
     delay(on ? PRE_TOGGLE_DELAY : 3000);
 }
