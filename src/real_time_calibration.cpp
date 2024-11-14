@@ -210,7 +210,7 @@ bool initializeMPU()
     mpu.setAccelFIFOEnabled(true);
     mpu.setFIFOEnabled(true);
 
-    mpu.setRate(99);                                // Set sample rate to ~5Hz
+    mpu.setRate(99);                                // Set sample rate to ~10Hz
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2); // Set accelerometer range to ±2g
     delay(1000);                                    // Allow MPU6050 to settle
     return true;

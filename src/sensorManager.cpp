@@ -37,6 +37,11 @@ float max_machete_magnitude = 0;
 #define SOME_THRESHOLD 0.3
 
 void performFFT();
+void handleWakeUpInterrupt() {
+    // Actions to perform upon wake-up
+    wakeup_flag = true; // Set a flag or take any action needed upon waking
+}
+
 
 bool setupSensors() {
     powerCycleMPU(true);  // Power on the MPU via Vext
@@ -76,47 +81,49 @@ bool initializeMPU() {
 }
 
 void monitorSensors() {
+    bool significantActivityDetected = false;
+
     if (remainingCycles <= 0) {
         quickBlinkAndHalt();  // Stop the system if out of cycles
         return;
     }
 
-    for (int phase = 1; phase <= CYCLES_FOR_5_MIN; phase++) {
-        Serial.printf("Recording phase %d...\n", phase);
+    unsigned long startTime = millis();
+    while (millis() - startTime < 70000) {  // 70-second window for checking activity
+        Serial.printf("Recording phase %d...\n", CYCLES_FOR_5_MIN - remainingCycles + 1);
         Serial.printf("%d remaining reading cycles\n", remainingCycles);
 
-        bool phaseCompleted = false;
-        int retryCount = 0;
+        toggleSensorPower(true);  // Power on MPU
+        delay(1000);              // Stabilize
 
-        while (!phaseCompleted && retryCount < 3) {
-            toggleSensorPower(true);  // Ensure MPU is powered on
-            delay(1000);              // Allow time to stabilize power
-            if (!initializeMPU()) {
-                Serial.println("MPU6050 initialization failed.");
-                retryCount++;
-                continue;
-            }
-
-            readAccelerometerDataForPhase(phase);
-
-            bool loggingSuccess = logDataToSPIFFS(inputBuffer, MAX_SAMPLES, phase);
-            if (loggingSuccess) {
-                phaseCompleted = true;
-                toggleSensorPower(false); // Power off MPU
-                performFFT();  // Run FFT analysis on logged data
-            } else {
-                Serial.println("Failed to log data to SPIFFS. Retrying...");
-                SPIFFS.end();
-                if (!SPIFFS.begin(true)) {
-                    Serial.println("SPIFFS remount failed. Skipping phase...");
-                    break;
-                }
-            }
+        if (!initializeMPU()) {
+            Serial.println("MPU6050 initialization failed.");
+            continue;
         }
-        remainingCycles--;
-        delay(5000);  // Keep this for MPU regeneration
+
+        readAccelerometerDataForPhase(remainingCycles);
+        
+        // Run FFT analysis and check for activity
+        performFFT();
+        
+        if (max_axe_magnitude > SOME_THRESHOLD || 
+            max_chainsaw_magnitude > SOME_THRESHOLD || 
+            max_machete_magnitude > MACHETE_THRESHOLD) {
+            significantActivityDetected = true;
+        }
+
+        if (!significantActivityDetected && millis() - startTime >= 70000) {
+            // If no activity is detected within 70 seconds, enter deep sleep
+            enterDeepSleep();
+        }
+
+        toggleSensorPower(false);  // Power off MPU
+        delay(5000);  // Delay for MPU stabilization
     }
+
+    remainingCycles--;
 }
+
 
 void readAccelerometerDataForPhase(int phase) {
     uint8_t fifoBuffer[BLOCK_SIZE];
@@ -151,10 +158,10 @@ void performFFT() {
 
     fft_execute(real_fft_plan);
 
-    float max_axe_magnitude = 0;
-    float max_saw_magnitude = 0;
-    float max_chainsaw_magnitude = 0;
-    float max_machete_magnitude = 0;
+    max_axe_magnitude = 0;
+    max_saw_magnitude = 0;
+    max_chainsaw_magnitude = 0;
+    max_machete_magnitude = 0;
 
     Serial.println("FFT Results:");
     for (int i = 1; i < (SAMPLES / 2); i++) {
@@ -176,7 +183,7 @@ void performFFT() {
 
     fft_destroy(real_fft_plan);
 
-    // Decision logic for different detections
+    // Decision logic
     if (max_machete_magnitude > MACHETE_THRESHOLD) {
         Serial.println("Machete impact detected!");
     } else if (max_chainsaw_magnitude > SOME_THRESHOLD) {
@@ -190,6 +197,7 @@ void performFFT() {
     }
 }
 
+
 bool checkFIFOOverflow() {
     if (mpu.getIntFIFOBufferOverflowStatus()) {
         Serial.println("FIFO overflow detected!");
@@ -202,4 +210,15 @@ bool checkFIFOOverflow() {
 void powerCycleMPU(bool on) {
     toggleSensorPower(on);
     delay(on ? PRE_TOGGLE_DELAY : 3000);
+}
+
+void enterDeepSleep() {
+    Serial.println("Completed all cycles, entering deep sleep...");
+
+    // Attach interrupt for wake-up on GPIO7 (assumed as INTERRUPT_PIN here)
+    attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN), handleWakeUpInterrupt, RISING);
+    esp_sleep_enable_ext0_wakeup(INTERRUPT_PIN, 1);  // Enable wakeup on GPIO7 rising edge
+
+    // Enter deep sleep
+    esp_deep_sleep_start();
 }

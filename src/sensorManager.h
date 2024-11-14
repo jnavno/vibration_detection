@@ -13,3 +13,5 @@ bool initializeMPU();
 void readAccelerometerDataForPhase(int phase);
 bool checkFIFOOverflow();
 void powerCycleMPU(bool on);
+void enterDeepSleep();
+void handleWakeUpInterrupt();

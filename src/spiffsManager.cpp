@@ -51,7 +51,7 @@ void eraseSPIFFSData() {
     Serial.println("SPIFFS erased.");
 }
 
-// Function to log debug information to SPIFFS
+// This logs debug information to SPIFFS
 void SPIFFSDebug(const char *errorMessage, int phase)
 {
     File debugFile = SPIFFS.open("/debug_log.txt", FILE_APPEND);
