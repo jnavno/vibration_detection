@@ -47,7 +47,7 @@ bool setupSensors() {
     powerCycleMPU(true);  // Power on the MPU via Vext
     delay(2000);          // Increased delay to ensure good power-up
 
-    Wire.begin(38, 1);   // 41, 42 for prototype design
+    Wire.begin(41, 42);   // 38, 1 for prototype, (41,42) for released hat
     Wire.setClock(100000); // Required for I2C transfers stability
 
     if (!initializeMPU()) {

@@ -1,6 +1,13 @@
 TODO:
 
-- implement deep sleep cycling
+- Solder I2C pins properly in tree hat DONE
+- Revise INT pin and disconnect via software and hardware, since the relevant circuitry gives a permanent HIGH
+- Test that voltage arrives to the accel of the hat from vext
+- Try something via software in gpio 3 and 4 so that the led of the hat are verified that work
+
+
+- implement deep sleep cycling DONE
+
 - Fine tune the detection frequency for machete and handsaw
 
 -current measurements idle and computing Work values+sending over lora( write small snippet) on batt only DONE
