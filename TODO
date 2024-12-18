@@ -4,6 +4,7 @@ TODO:
 - Revise INT pin and disconnect via software and hardware, since the relevant circuitry gives a permanent HIGH
 - Test that voltage arrives to the accel of the hat from vext
 - Try something via software in gpio 3 and 4 so that the led of the hat are verified that work
+- report writing talking about the hardware tests and that there will be at least 2 more manufactured test boards before installation.
 
 
 - implement deep sleep cycling DONE
