@@ -19,14 +19,16 @@ This project implements FFT (Fast Fourier Transform) to identify the dominant fr
 
 ### Basic Flow
 
-    Interrupt on GPIO7 wakes up the device.
+    Interrupt on GPIO7 wakes up the device. The interrupt is disabled.
     The accelerometer will be powered on.
-    The system will read data, then power off the accelerometer.
+    The system will read data, evaluate it and decide whether to send an alarm or not.
+    Then power off the accelerometer.
     GPIO7 will be re-enabled for future interrupts, and the system will enter deep sleep mode.
 
 #### Components
 - **[ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html) | [Heltec V3](https://heltec.org/project/wifi-lora-32-v3/)**: Manages system operations, sensor interfacing, and data logging.
 - **[GY-521 MPU6050](https://www.hotmcu.com/gy521-mpu6050-3axis-acceleration-gyroscope-6dof-module-p-83.html)**: Accelerometer sensor for measuring movements on the 3 axis.
+- **[SW18010P](https://www.amazon.com/Ganasome-Sensitivity-Vibration-Sensor-SW-18010P/dp/B0CYC2HGL3?crid=3E8NER9IKBTUJ&dib=eyJ2IjoiMSJ9.AXH0zARAFmoLteV3ZuiE7Qis7u6Ex6XUNmmETaQ9OSGE4xzvSVPofnLOiwQTrNdhWCYaBgQAM_0hm55n9m1Je-C0A9oHV8xSNCk5wG7kF-ofkmDYQoplpwZA5PnZPowccOO0kJ5uFqUSMTMsN4YcRwJ0LFeEVE-Im3yLu4L1t1F-4TJ-dtsBvzJmcsFGzvX9_pWyRS9vnloQw0DdHbz_WLBpEexOoX49zcR6ELPYG-xCJekZJrLgGeE4fxgZY3j-AIrCQHD2JDxp0Gg6rqZkj9dEfQ3TmXGdtDSGM6gDAqQwfJb7rB4kI-Q_7d9_0_obOZ9BC9damx-G8_lFYghI3EU1L-4MUlK89TjwoHVP5O4guyvgmJZCIlKHwRX5NLUh5qclbbmoXEjlWjilDeoxMBdlSdzVle-mOUIhTiKBwneMpCdeDpV8wDla3gu9UH2D.7Y5GzKfmtvDDlzjo3MiG56ZSvvcxMlVepYsldtGZCuM&dib_tag=se&keywords=sw18010p&qid=1736804313&sprefix=sw1801%2Caps%2C1252&sr=8-5)**: Accelerometer sensor for measuring movements on the 3 axis.
 - **[LM741 OpAmp setup](https://www.ti.com/lit/ds/symlink/lm741.pdf)**: Deals with generating clean interrupts at nA range of input offset current.
 - **[SPIFFS Filesystem](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/storage/spiffs.html)**: Used for storing accelerometer data in CSV format.
 - **LED Indicator**: Provides visual feedback, indicating system status and alarm activation.
@@ -51,7 +53,7 @@ framework = arduino
 ```
 ---
 
-### Prototyping
+### Testing Setup
 
 ![Prototype Front View](docs/images/shake_detection_proto_heltecv3.jpg)
 *Heltec V3 prototype.*
@@ -97,13 +99,11 @@ framework = arduino
 
 3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid device, such as PVC, so that vibrations in the trunk will move through the casing into the accelerometer.
 
-4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated. No vibration will put the system into deep sleep. A simple IRFZ44N acts as an off switch for the shake detector while the accelerometer computes the vibration pattern. The LED does the alarm functionality indicating whether or not a logging is happening to the tree.
+4. **Operation**: The system continuously samples accelerometer data, logging it to the SPIFFS filesystem. If shaking surpasses predefined thresholds, an alarm is activated. No vibration will put the system into deep sleep during FFT analysis. The LED does the alarm functionality indicating whether or not a logging is happening to the tree.
 
 5. **Analysis**: Logged data can be used to identify shaking events and patterns and assess potential threats to trees.
 
-6. **Maintenance**: Periodically check and maintain the system to ensure accurate monitoring and alarm functionality.
-
-7. **Battery Life**: If you have a 2000 mAh battery and the Heltec V3 module's power consumption and usage scenario remain the same (100 mA during computation for 1 minute per day, and 10 µA in deep sleep), the calculations are as follows:
+6. **Battery Life**: The following example is calculated for: 2000 mAh battery, Heltec V3.1. Usage scenario: 100 mA during computation for 1 minute per day, and 10 µA in deep sleep.
 
 ### 1. Estimate Daily Power Consumption
 
@@ -126,7 +126,7 @@ framework = arduino
 
 ---
 
-### 2. Calculate Battery Life with a 2000 mAh Battery
+### 2. Battery Life with a 2000 mAh Battery
 
 **Total Consumption per Day**: 1.91 mAh
 

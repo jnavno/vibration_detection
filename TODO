@@ -1,26 +1,25 @@
 TODO:
 
-- Solder I2C pins properly in tree hat DONE
-- Revise INT pin and disconnect via software and hardware, since the relevant circuitry gives a permanent HIGH
-- Test that voltage arrives to the accel of the hat from vext
-- Try something via software in gpio 3 and 4 so that the led of the hat are verified that work
-- report writing talking about the hardware tests and that there will be at least 2 more manufactured test boards before installation.
+- Add XDA and XCL in circuit and revise the rest of components against the master circuit for the mpu6050 DONE
+- Solder I2C pins in tree hat DONE
+- Revise the whole INT circuitry with external engineer. DONE
+- Revise INT pin and disconnect via software and hardware, since the relevant circuitry gives a permanent HIGH. Basically de'solder the stud from the heltec
+- Test that voltage arrives to the accel of the hat from vext DONE. It does
+- Verufy LED in hat works via gpio 3 and 4. DONE
+- report ECOMINGA in writing about hardware tests and that there will be at least 2 more manufactured test boards before installation. DONE
 
 
 - implement deep sleep cycling DONE
 
 - Fine tune the detection frequency for machete and handsaw
 
--current measurements idle and computing Work values+sending over lora( write small snippet) on batt only DONE
+- Current measurements idle and computing Work values+sending over lora( write small snippet) on batt only DONE
 
--create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050 DONE
+- Create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050 DONE
 
 - Decide whether mosfet is needed after all. list pros and cons anyway DONE
 
 
-Data Collection and Storage:
-Within inspectTreeShaking(), collect accelerometer data during each sampling cycle.
-Store the accelerometer data in a suitable data structure.
 
 Batch Creation:DONE
 Define conditions for creating a batch (e.g., number of cycles before going to sleep, sufficient vibration data).
