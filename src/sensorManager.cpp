@@ -15,7 +15,6 @@ float inputBuffer[MAX_SAMPLES]; // Input buffer for accelerometer data
 int remainingCycles = MAX_CYCLES; // Initialize remaining cycles
 
 // FFT thresholds and frequencies
-float max_axe_magnitude = 0;
 float max_saw_magnitude = 0;
 float max_chainsaw_magnitude = 0;
 float max_machete_magnitude = 0;
@@ -26,8 +25,6 @@ float max_machete_magnitude = 0;
 // If a 5 Hz sampling rate is intended, set Rate Divider to 199 with mpu.setRate(199),
 // which would yield 5 Hz (1000 / (1 + 199)), aligning with the defined SAMPLING_FREQUENCY.
 
-#define AXE_MIN_FREQ 20.0
-#define AXE_MAX_FREQ 60.0
 #define SAW_MIN_FREQ 5.0
 #define SAW_MAX_FREQ 30.0
 #define CHAINSAW_MIN_FREQ 50.0
@@ -111,7 +108,6 @@ void monitorSensors() {
         // Check for significant activity
         if (max_machete_magnitude > MACHETE_THRESHOLD ||
             max_chainsaw_magnitude > CHAINSAW_THRESHOLD ||
-            max_axe_magnitude > AXE_THRESHOLD ||
             max_saw_magnitude > SAW_THRESHOLD) {
             significantActivityDetected = true;
 
@@ -216,7 +212,6 @@ void performFFT() {
 
     fft_execute(real_fft_plan);
 
-    max_axe_magnitude = 0;
     max_saw_magnitude = 0;
     max_chainsaw_magnitude = 0;
     max_machete_magnitude = 0;
@@ -228,9 +223,8 @@ void performFFT() {
 
         Serial.printf("Frequency: %.2f Hz, Magnitude: %.4f\n", frequency, magnitude);
 
-        if (frequency >= AXE_MIN_FREQ && frequency <= AXE_MAX_FREQ) {
-            if (magnitude > max_axe_magnitude) max_axe_magnitude = magnitude;
-        } else if (frequency >= SAW_MIN_FREQ && frequency <= SAW_MAX_FREQ) {
+
+        if (frequency >= SAW_MIN_FREQ && frequency <= SAW_MAX_FREQ) {
             if (magnitude > max_saw_magnitude) max_saw_magnitude = magnitude;
         } else if (frequency >= CHAINSAW_MIN_FREQ && frequency <= CHAINSAW_MAX_FREQ) {
             if (magnitude > max_chainsaw_magnitude) max_chainsaw_magnitude = magnitude;
@@ -242,7 +236,6 @@ void performFFT() {
     fft_destroy(real_fft_plan);
 
     // Print maximum magnitudes for each tool
-    Serial.printf("Max Axe Magnitude: %.4f\n", max_axe_magnitude);
     Serial.printf("Max Saw Magnitude: %.4f\n", max_saw_magnitude);
     Serial.printf("Max Chainsaw Magnitude: %.4f\n", max_chainsaw_magnitude);
     Serial.printf("Max Machete Magnitude: %.4f\n", max_machete_magnitude);
@@ -252,8 +245,6 @@ void performFFT() {
         Serial.println("Machete impact detected!");
     } else if (max_chainsaw_magnitude > CHAINSAW_THRESHOLD) {
         Serial.println("Chainsaw cutting detected!");
-    } else if (max_axe_magnitude > AXE_THRESHOLD) {
-        Serial.println("Hand axe/hatchet cutting detected!");
     } else if (max_saw_magnitude > SAW_THRESHOLD) {
         Serial.println("Handsaw cutting detected!");
     } else {
