@@ -31,7 +31,7 @@ void checkSPIFFSSpace() {
 }
 
 void extractDataOverSerial() {
-    for (int phase = 1; phase <= CYCLES_FOR_5_MIN; phase++) {
+    for (int phase = 1; phase <= MAX_CYCLES; phase++) {
         char filename[32];
         snprintf(filename, sizeof(filename), "/data_phase_%d.csv", phase);
         File file = SPIFFS.open(filename, FILE_READ);

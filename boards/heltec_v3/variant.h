@@ -7,12 +7,15 @@
 #define STATUS_LED_PIN GPIO_NUM_4
 
 // Timing Definitions
-#define SAMPLES 128
-#define PHASE_DURATION 30000 // 30 seconds for each phase
-#define CYCLES_FOR_5_MIN 10  // 5 minutes = 10 cycles of 30 seconds
-#define BLOCK_SIZE 32
-#define SAMPLE_RATE 50
-#define MAX_SAMPLES (SAMPLE_RATE * (PHASE_DURATION / 1000))
+#define PHASE_DURATION 10000        // 10 seconds per phase
+#define MAX_CYCLES 3          // Limit to 3 cycles
+#define SAMPLE_RATE 1000              // 50 samples per second
+#define BLOCK_SIZE 32               // Block size for FIFO buffer
+#define MAX_SAMPLES (SAMPLE_RATE * (PHASE_DURATION / 1000)) // Max samples per phase
+
+// File and SPIFFS Settings
 #define FILENAME_FORMAT "/data_phase_%d.csv"
-#define PRE_TOGGLE_DELAY 1500  // Delay before toggling accelerometer power
-#define MAX_SPIFFS_USAGE 30000 // Max limit of used space in bytes (30KB)\
+#define MAX_SPIFFS_USAGE 30000 // Max SPIFFS space (30KB)
+
+// Delays
+#define PRE_TOGGLE_DELAY 100 // Delay before toggling accelerometer power
