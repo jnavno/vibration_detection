@@ -1,7 +1,17 @@
+#pragma once
 #include "spiffsManager.h"
 #include "SPIFFS.h"
+#include <stddef.h>
 #include <variant.h>
+#include <cstddef>
 
+
+void setupSPIFFS();
+bool logDataToSPIFFS(float *data, size_t length, int phase);
+void checkSPIFFSSpace();
+void extractDataOverSerial();
+void eraseSPIFFSData();
+void SPIFFSDebug(const char *errorMessage, int phase);
 
 void setupSPIFFS() {
     if (!SPIFFS.begin(true)) {
@@ -24,14 +34,11 @@ bool logDataToSPIFFS(float *data, size_t length, int phase) {
 }
 
 void checkSPIFFSSpace() {
-    size_t totalBytes = SPIFFS.totalBytes();
-    size_t usedBytes = SPIFFS.usedBytes();
-    float usage = (float)usedBytes / totalBytes * 100;
-    Serial.printf("SPIFFS Usage: %.2f%%\n", usage);
+    Serial.printf("SPIFFS Usage: %.2f%%\n", (float)SPIFFS.usedBytes() / SPIFFS.totalBytes() * 100);
 }
 
 void extractDataOverSerial() {
-    for (int phase = 1; phase <= MAX_CYCLES; phase++) {
+    for (int phase = 1; phase <= 5; phase++) {
         char filename[32];
         snprintf(filename, sizeof(filename), "/data_phase_%d.csv", phase);
         File file = SPIFFS.open(filename, FILE_READ);
@@ -51,12 +58,9 @@ void eraseSPIFFSData() {
     Serial.println("SPIFFS erased.");
 }
 
-// This logs debug information to SPIFFS
-void SPIFFSDebug(const char *errorMessage, int phase)
-{
+void SPIFFSDebug(const char *errorMessage, int phase) {
     File debugFile = SPIFFS.open("/debug_log.txt", FILE_APPEND);
-    if (!debugFile)
-    {
+    if (!debugFile) {
         Serial.println("Failed to open debug log file.");
         return;
     }

@@ -1,21 +1,34 @@
 #pragma once
 
-// Pin Definitions
+// **Pin Definitions**
 #define LED_PIN GPIO_NUM_3
 #define VEXT_CTRL_PIN GPIO_NUM_36
 #define INTERRUPT_PIN GPIO_NUM_7
 #define STATUS_LED_PIN GPIO_NUM_4
 
-// Timing Definitions
-#define PHASE_DURATION 10000        // 10 seconds per phase
-#define MAX_CYCLES 3          // Limit to 3 cycles
-#define SAMPLE_RATE 1000              // 50 samples per second
-#define BLOCK_SIZE 32               // Block size for FIFO buffer
-#define MAX_SAMPLES (SAMPLE_RATE * (PHASE_DURATION / 1000)) // Max samples per phase
+// **Adaptive Sampling Configuration**
+extern int SAMPLE_RATE;  // Sampling rate dynamically adjusted
+extern int SAMPLES;  // Dynamically updated sample size
+#define DEFAULT_SAMPLE_RATE 20  // Low-power mode default
 
-// File and SPIFFS Settings
-#define FILENAME_FORMAT "/data_phase_%d.csv"
-#define MAX_SPIFFS_USAGE 30000 // Max SPIFFS space (30KB)
+// **Sampling Duration & Buffer Size**
+#define SAMPLING_DURATION 60  // 60 seconds of monitoring
+#define MAX_BUFFER_SIZE 24000  // Maximum buffer allocation (400 Hz * 60 sec)
+#define BLOCK_SIZE 128  // Define BLOCK_SIZE for FIFO buffer handling
 
-// Delays
-#define PRE_TOGGLE_DELAY 100 // Delay before toggling accelerometer power
+// **Vibration Detection Thresholds and Frequencies**
+#define SAW_MIN_FREQ 30.0
+#define SAW_MAX_FREQ 60.0
+#define CHAINSAW_MIN_FREQ 200.0
+#define CHAINSAW_MAX_FREQ 300.0
+#define MACHETE_MIN_FREQ 5.0
+#define MACHETE_MAX_FREQ 10.0
+
+// **SPIFFS Settings**
+#define SPIFFS_FILE "/data.csv"  // Single data storage file
+
+// **Delays**
+#define PRE_TOGGLE_DELAY 100  // Delay before toggling accelerometer power
+#define ENABLE_INTERRUPT true
+#define MONITOR_DURATION 60000  // 60 seconds
+#define VIBRATION_THRESHOLD 0.5  // Threshold for increasing sampling rate

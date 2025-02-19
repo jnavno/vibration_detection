@@ -1,7 +1,10 @@
+#pragma once
 #include <Arduino.h>
-#include "commandHandler.h"
 #include "spiffsManager.h"
 #include "powerManager.h"
+
+void setupCommands();
+void handleSerialCommands();
 
 void setupCommands() {
     Serial.println("Command handler setup complete.");
@@ -10,7 +13,7 @@ void setupCommands() {
 void handleSerialCommands() {
     if (Serial.available()) {
         String command = Serial.readStringUntil('\n');
-        command.trim();  // Remove any extra newline or spaces
+        command.trim();
 
         if (command == "check_memory") {
             checkSPIFFSSpace();
