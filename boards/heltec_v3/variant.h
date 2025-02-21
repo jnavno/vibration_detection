@@ -6,6 +6,13 @@
 #define INTERRUPT_PIN GPIO_NUM_7
 #define STATUS_LED_PIN GPIO_NUM_4
 
+#define VEXT_CTRL_PIN 36  // Vext control pin to power the MAX17048
+#define STATUS_LED_PIN 13  // Pin for an LED indicator (or external alert)
+#define ALERT_PIN 35       // Pin to read ALRT signal from MAX17048
+#define MIN_BATT_VOLTAGE 3.3 //**low voltage alert threshold**
+#define MAX_BATT_VOLTAGE 4.2 //**low voltage alert threshold**
+#define SOC_THRESHOLD 20    //SOC alert threshold (e.g., 20% battery SOC)
+
 // **Adaptive Sampling Configuration**
 extern int SAMPLE_RATE;  // Sampling rate dynamically adjusted
 extern int SAMPLES;  // Dynamically updated sample size

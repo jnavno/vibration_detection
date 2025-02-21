@@ -34,7 +34,7 @@ void setup() {
 }
 
 void loop() {
-    handleSerialCommands();  // Handle incoming serial commands
-    manageBattery();         // Monitor battery and manage power
-    monitorFor60Sec();       // Collect and log sensor data
+    handleSerialCommands();  // Handle SPIFFS related commands
+    monitorBattery();         // Monitor battery and manage power
+    monitorFor60Sec();       // Collect and log vibration data
 }

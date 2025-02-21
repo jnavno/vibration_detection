@@ -7,3 +7,4 @@ bool initializeMPU();
 bool significantActivityDetected();
 void monitorFor60Sec();
 void performFFT();
+bool initializeMAX();
