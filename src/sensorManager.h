@@ -5,6 +5,6 @@ void enterDeepSleep();
 bool setupSensors();
 bool initializeMPU();
 bool significantActivityDetected();
-void monitorFor60Sec();
+void monitorSensors();
 void performFFT();
 bool initializeMAX();

@@ -1,12 +1,13 @@
 #include <Arduino.h>
 #include "spiffsManager.h"
 #include "powerManager.h"
+#include "DebugConfiguration.h"
 
 void setupCommands();
 void handleSerialCommands();
 
 void setupCommands() {
-    Serial.println("Command handler setup complete.");
+    debug_println("Command handler setup complete.");
 }
 
 void handleSerialCommands() {
@@ -21,7 +22,7 @@ void handleSerialCommands() {
         } else if (command == "extract_data") {
             extractDataOverSerial();
         } else {
-            Serial.println("Unknown command.");
+            debug_println("Unknown command.");
         }
     }
 }

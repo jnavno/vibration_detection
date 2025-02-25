@@ -4,6 +4,7 @@
 #include "powerManager.h"
 #include "commandHandler.h"
 #include "SPIFFS.h"
+#include "DebugConfiguration.h"
 
 #ifdef HELTEC_V3_DEVKIT
     #include "../boards/heltec_v3/variant.h"
@@ -14,27 +15,24 @@
 #endif
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("Starting setup...");
+    Serial.begin(SERIAL_BAUD);
+    debug_println("Starting setup...");
 
     setupPower();  // Power up Vext
     delay(3000);   // Allow extra time for MPU6050 to stabilize
 
     if (!setupSensors()) {
-        Serial.println("Sensor setup failed. Restarting...");
+        debug_println("Sensor setup failed. Restarting...");
         while (1);  // Halt if setup fails, for debugging
     }
-
-    Serial.println("Setting up SPIFFS...");
+    debug_println("Setting up SPIFFS...");
     setupSPIFFS();
-
-    Serial.println("Setting up commands...");
+    debug_println("Setting up commands...");
     setupCommands();
-    Serial.println("Setup complete.");
+    debug_println("Setup complete.");
 }
 
 void loop() {
     handleSerialCommands();  // Handle SPIFFS related commands
-    monitorBattery();         // Monitor battery and manage power
-    monitorFor60Sec();       // Collect and log vibration data
+    monitorSensors();   // Monitors battery, accelerometer, FFT, and dynamic sampling.
 }

@@ -1,8 +1,9 @@
 #include "powerManager.h"
+#include "DebugConfiguration.h"
 #include <Arduino.h>
 #include <variant.h>
 #include <Wire.h>
-#include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h> // SparkFun MAX1704x library
+#include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
 
 void setupPower();
 void monitorBattery();
@@ -27,25 +28,30 @@ void toggleSensorPower(bool state) {
 }
 
 void quickBlinkAndHalt() {
-    Serial.println("System halted. Press reset to restart.");
+    debug_println("System halted. System will restart.");
     unsigned long blinkStart = millis();
+    // Blink pattern: two quick flashes with a longer pause (repeat for 30 seconds)
     while (millis() - blinkStart < 30000) {
         digitalWrite(STATUS_LED_PIN, HIGH);
-        delay(200);
+        delay(100);
         digitalWrite(STATUS_LED_PIN, LOW);
-        delay(200);
+        delay(100);
+        digitalWrite(STATUS_LED_PIN, HIGH);
+        delay(100);
+        digitalWrite(STATUS_LED_PIN, LOW);
+        delay(700);
     }
-    while (true);
+    // Instead of halting with an infinite loop, restart the system.
+    esp_restart();
 }
 
-void quickStatusOnBlink() {
-    Serial.println("System running.");
-    unsigned long blinkStart = millis();
-    while (millis() - blinkStart < 15000) {
+//  Successful sensor initialization signaling
+void SensorInitOKBlink() {
+    debug_println("Successful sensor initialization indicated via LED");
+    for (int i = 0; i < 5; i++) {
         digitalWrite(STATUS_LED_PIN, HIGH);
-        delay(200);
+        delay(100);
         digitalWrite(STATUS_LED_PIN, LOW);
-        delay(200);
+        delay(100);
     }
-    while (true);
 }

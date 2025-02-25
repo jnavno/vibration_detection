@@ -1,4 +1,3 @@
-#pragma once
 #include "spiffsManager.h"
 #include "SPIFFS.h"
 #include <stddef.h>
