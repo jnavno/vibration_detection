@@ -1,3 +1,4 @@
+#include <Wire.h>
 #include <Arduino.h>
 #include "sensorManager.h"
 #include "spiffsManager.h"
@@ -19,8 +20,12 @@ void setup() {
     debug_println("Starting setup...");
 
     setupPower();  // Power up Vext
+    toggleSensorPower(true);
     delay(3000);   // Allow extra time for MPU6050 to stabilize
-
+    // Initialize I2C early with defined SDA and SCL pins and set the clock.
+    Wire.begin(SDA_PIN, SCL_PIN);
+    Wire.setClock(100000);
+    delay(3000);
     if (!setupSensors()) {
         debug_println("Sensor setup failed. Restarting...");
         while (1);  // Halt if setup fails, for debugging

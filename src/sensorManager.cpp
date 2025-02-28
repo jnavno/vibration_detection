@@ -2,7 +2,7 @@
 #include "MPU6050.h"
 #include "variant.h"
 #include "FFT.h"
-#include "FFT_signal.h"
+#include "FFT_signal.h"  // This header declares: float fft_input[FFT_N], fft_output[FFT_N]
 #include "sensorManager.h"
 #include "powerManager.h"
 #include "DebugConfiguration.h"
@@ -12,9 +12,8 @@
 #include <stddef.h>
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
 
-// Use a constructor that passes the Wire pointer (if your library supports it)
-// Ensure MPU6050_DEFAULT_ADDRESS is defined (commonly 0x68)
-MPU6050 mpu(MPU6050_DEFAULT_ADDRESS, &Wire);
+// Instead of a global MPU6050 object, declare a pointer.
+MPU6050* mpu = nullptr;
 
 volatile bool wakeup_flag = false;
 float inputBuffer[MAX_BUFFER_SIZE];
@@ -60,8 +59,7 @@ void monitorBattery() {
     if (maxStatus) {
         voltage = lipo.getVoltage();
         soc = lipo.getSOC();
-        debug_printf("Battery readings - voltage: %.2f, soc: %.2f, alert: %s\n",
-                     voltage, soc, alert ? "true" : "false");
+        debug_printf("Battery readings - voltage: %.2f, soc: %.2f, alert: %s\n", voltage, soc, alert ? "true" : "false");
     } else {
         voltage = -1;
         soc = -1;
@@ -91,12 +89,10 @@ void setVoltageAlertThresholds(float minVoltage, float maxVoltage) {
 
 bool setupSensors() {
     debug_println("Setting up sensors...");
-    toggleSensorPower(true);
-    delay(2000);
-    Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(100000);
+    // Allocate the MPU6050 object now—after Wire is initialized.
+    mpu = new MPU6050(MPU6050_DEFAULT_ADDRESS, &Wire);
 
-    // Attempt MPU initialization
+    // Attempt MPU6050 initialization
     bool mpuStatus = initializeMPU();
     if (mpuStatus) {
         debug_println("MPU initialized successfully.");
@@ -115,7 +111,7 @@ bool setupSensors() {
     // If at least one sensor initialized, signal success with a single blink.
     if (mpuStatus || maxStatus) {
         debug_println("At least one sensor initialized successfully.");
-        SensorInitOKBlink();  // This blink function (from powerManager) signals success.
+        SensorInitOKBlink();  // Signals success with LED blink.
         return true;
     } else {
         debug_println("No sensor initialized. Both MPU and MAX1704x failed.");
@@ -123,26 +119,23 @@ bool setupSensors() {
     }
 }
 
-
-// Revised minimal MPU6050 initialization (like your old version)
+// Revised minimal MPU6050 initialization.
 bool initializeMPU() {
     const int maxRetries = 3;
     for (int attempt = 1; attempt <= maxRetries; attempt++){
         debug_printf("Initializing MPU6050, attempt %d...\n", attempt);
-        mpu.initialize();
+        mpu->initialize();
         delay(100);
-        if (mpu.testConnection()) {
+        if (mpu->testConnection()) {
             debug_println("MPU6050 initialization successful!");
-            mpu.setFIFOEnabled(false);     // Disable FIFO to configure it
-            mpu.resetFIFO();               // Clear FIFO buffer
-            mpu.setAccelFIFOEnabled(true); // Enable accelerometer FIFO
-            mpu.setFIFOEnabled(true);      // Enable FIFO
-            // Wake up and set clock source explicitly:
-            mpu.setSleepEnabled(false);
-            mpu.setClockSource(MPU6050_CLOCK_PLL_XGYRO);
-            // Basic configuration (no FIFO for now)
-            mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
-            mpu.setRate(1000 / SAMPLE_RATE - 1);
+            mpu->setFIFOEnabled(false);     // Disable FIFO to configure it
+            mpu->resetFIFO();               // Clear FIFO buffer
+            mpu->setAccelFIFOEnabled(true); // Enable accelerometer FIFO
+            mpu->setFIFOEnabled(true);      // Enable FIFO
+            mpu->setSleepEnabled(false);    // Wake up sensor
+            mpu->setClockSource(MPU6050_CLOCK_PLL_XGYRO);
+            mpu->setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
+            mpu->setRate(1000 / SAMPLE_RATE - 1);
             delay(1000);
             return true;
         } else {
@@ -154,7 +147,7 @@ bool initializeMPU() {
     return false;
 }
 
-// MAX1704x initialization with retry (unchanged)
+// MAX1704x initialization with retry.
 bool initializeMAX() {
     const int maxRetries = 3;
     pinMode(ALERT_LED_PIN, INPUT_PULLDOWN);
@@ -181,45 +174,47 @@ bool initializeMAX() {
 }
 
 void readAccelerometerDataForPhase(int phase) {
-    uint8_t fifoBuffer[BLOCK_SIZE];
     int samplesRead = 0;
     unsigned long startMillis = millis();
     debug_printf("Starting accelerometer data read for phase %d\n", phase);
 
     while (millis() - startMillis < MONITOR_DURATION) {
-        uint16_t fifoCount = mpu.getFIFOCount();
+        uint16_t fifoCount = mpu->getFIFOCount();
         debug_printf("FIFO Count: %d\n", fifoCount);
-        if (fifoCount >= BLOCK_SIZE) {
-            mpu.getFIFOBytes(fifoBuffer, BLOCK_SIZE);
-            mpu.resetFIFO();
-            debug_println("FIFO data read and FIFO reset.");
-            for (int i = 0; i <= BLOCK_SIZE - 6 && samplesRead < SAMPLES; i += 6) {
-                int16_t rawX = (fifoBuffer[i] << 8) | fifoBuffer[i + 1];
-                int16_t rawY = (fifoBuffer[i + 2] << 8) | fifoBuffer[i + 3];
-                int16_t rawZ = (fifoBuffer[i + 4] << 8) | fifoBuffer[i + 5];
-                debug_printf("Raw Accelerometer X: %d\n", rawX);
-                debug_printf("Raw Accelerometer Y: %d\n", rawY);
-                debug_printf("Raw Accelerometer Z: %d\n", rawZ);
-                float accelX = rawX / 16384.0;
-                float accelY = rawY / 16384.0;
-                float accelZ = rawZ / 16384.0;
-                normalizeGravity(&accelX, &accelY, &accelZ);
-                debug_printf("Normalized Gravity X: %f\n", accelX);
-                debug_printf("Normalized Gravity Y: %f\n", accelY);
-                debug_printf("Normalized Gravity Z: %f\n", accelZ);
-                inputBuffer[samplesRead++] = sqrt(pow(accelX, 2) + pow(accelY, 2) + pow(accelZ, 2));
-                debug_printf("Acceleration Magnitude: %f\n", inputBuffer[samplesRead - 1]);
-            }
-        } else if (fifoCount == 0) {
-            debug_println("FIFO is empty, waiting for data...");
+
+        // Wait until we have at least 6 bytes (one sample)
+        if (fifoCount < 6) {
+            debug_println("Not enough FIFO data, waiting...");
             delay(10);
+            continue;
         }
-        debug_println("Waiting for next sample...");
+
+        uint8_t fifoBuffer[6];
+        // Read one sample (6 bytes)
+        mpu->getFIFOBytes(fifoBuffer, 6);
+
+        // (Optional) Reset FIFO if you know the sensor supports it safely.
+        // mpu->resetFIFO();
+
+        int16_t rawX = (fifoBuffer[0] << 8) | fifoBuffer[1];
+        int16_t rawY = (fifoBuffer[2] << 8) | fifoBuffer[3];
+        int16_t rawZ = (fifoBuffer[4] << 8) | fifoBuffer[5];
+
+        float accelX = rawX / 16384.0;
+        float accelY = rawY / 16384.0;
+        float accelZ = rawZ / 16384.0;
+
+        normalizeGravity(&accelX, &accelY, &accelZ);
+        inputBuffer[samplesRead++] = sqrt(pow(accelX, 2) + pow(accelY, 2) + pow(accelZ, 2));
+        debug_printf("Sample %d: Magnitude = %f\n", samplesRead, inputBuffer[samplesRead - 1]);
+
         delay(1000 / SAMPLE_RATE);
     }
+
     logDataToSPIFFS(inputBuffer, samplesRead, phase);
     debug_printf("Finished reading accelerometer data for phase %d\n", phase);
 }
+
 
 bool significantActivityDetected() {
     return (max_chainsaw_magnitude > max_machete_magnitude) ||
@@ -230,14 +225,13 @@ bool significantActivityDetected() {
 void monitorSensors() {
     unsigned long startTime = millis();
     debug_println("Starting 60-second monitoring...");
-    monitorBattery();
     debug_println("Monitoring battery...");
-    
+    monitorBattery();
     // Use a static variable to avoid repeatedly updating sensor registers.
     static int lastSampleRate = SAMPLE_RATE;
 
     while (millis() - startTime < MONITOR_DURATION) {
-        debug_println("Collecting accelerometer data...");
+        debug_println("Now collecting accelerometer data...");
         readAccelerometerDataForPhase(0);
 
         debug_println("Performing FFT analysis...");
@@ -247,7 +241,7 @@ void monitorSensors() {
         debug_printf("max_chainsaw_magnitude: %f\n", max_chainsaw_magnitude);
         debug_printf("max_saw_magnitude: %f\n", max_saw_magnitude);
 
-        // Dynamically adjust sampling rate
+        // Dynamically adjust sampling rate based on FFT results.
         if (max_machete_magnitude > max_chainsaw_magnitude && max_machete_magnitude > max_saw_magnitude) {
             debug_println("Machete detected, adjusting sample rate to 200.");
             SAMPLE_RATE = 200;
@@ -262,10 +256,10 @@ void monitorSensors() {
         }
         SAMPLES = SAMPLE_RATE * SAMPLING_DURATION;
         
-        // Only update sensor's sample rate if it has changed:
+        // Only update the sensor's sample rate if it has changed.
         if (SAMPLE_RATE != lastSampleRate) {
             debug_printf("Updating MPU6050 sample rate from %d to %d\n", lastSampleRate, SAMPLE_RATE);
-            mpu.setRate(1000 / SAMPLE_RATE - 1);
+            mpu->setRate(1000 / SAMPLE_RATE - 1);
             lastSampleRate = SAMPLE_RATE;
         }
 
@@ -281,20 +275,23 @@ void monitorSensors() {
 }
 
 void performFFT() {
-    fft_config_t *real_fft_plan = fft_init(SAMPLES, FFT_REAL, FFT_FORWARD, fft_input, fft_output);
+    // Limit the FFT sample count to the library-defined FFT_N.
+    int fftSamples = (SAMPLES < FFT_N) ? SAMPLES : FFT_N;
+    fft_config_t *real_fft_plan = fft_init(fftSamples, FFT_REAL, FFT_FORWARD, fft_input, fft_output);
     if (!real_fft_plan) {
         debug_println("FFT initialization failed!");
         return;
     }
-    for (int i = 0; i < SAMPLES; i++) {
-        real_fft_plan->input[i] = (i < MAX_BUFFER_SIZE) ? inputBuffer[i] : 0;
+    // Copy inputBuffer into fft_input for FFT processing.
+    for (int i = 0; i < fftSamples; i++) {
+        fft_input[i] = (i < MAX_BUFFER_SIZE) ? inputBuffer[i] : 0;
     }
     fft_execute(real_fft_plan);
     max_saw_magnitude = max_chainsaw_magnitude = max_machete_magnitude = 0;
     overall_vibration_magnitude = 0;
-    for (int i = 1; i < (SAMPLES / 2); i++) {
-        float frequency = (i * SAMPLE_RATE) / SAMPLES;
-        float magnitude = sqrt(pow(real_fft_plan->output[2 * i], 2) + pow(real_fft_plan->output[2 * i + 1], 2));
+    for (int i = 1; i < (fftSamples / 2); i++) {
+        float frequency = (i * SAMPLE_RATE) / fftSamples;
+        float magnitude = sqrt(pow(fft_output[2 * i], 2) + pow(fft_output[2 * i + 1], 2));
         overall_vibration_magnitude += magnitude;
         if (frequency >= SAW_MIN_FREQ && frequency <= SAW_MAX_FREQ) {
             max_saw_magnitude = std::max(max_saw_magnitude, magnitude);
@@ -330,7 +327,7 @@ void printResults() {
     debug_printf("Battery: %.2f%%\n", soc);
     debug_println("=========================");
 
-    // Blink LED 5 times quickly (100ms ON, 100ms OFF) to signal results
+    // Blink LED 5 times quickly (100ms ON, 100ms OFF) to signal results.
     for (int i = 0; i < 5; i++) {
         digitalWrite(STATUS_LED_PIN, HIGH);
         delay(100);
