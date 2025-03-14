@@ -1,38 +1,32 @@
 TODO:
 
-- Add XDA and XCL in circuit and revise the rest of components against the master circuit for the mpu6050 DONE
-- Solder I2C pins in tree hat DONE
-- Revise the whole INT circuitry with external engineer. DONE
-- Revise INT pin and disconnect via software and hardware, since the relevant circuitry gives a permanent HIGH. Basically de'solder the stud from the heltec
-- Test that voltage arrives to the accel of the hat from vext DONE. It does
-- Verufy LED in hat works via gpio 3 and 4. DONE
-- report ECOMINGA in writing about hardware tests and that there will be at least 2 more manufactured test boards before installation. DONE
-
-
-- implement deep sleep cycling DONE
-
 - Fine tune the detection frequency for machete and handsaw
 
-- Current measurements idle and computing Work values+sending over lora( write small snippet) on batt only DONE
+- Add wifi disabling and other peripherals to lower consumption
 
-- Create pcb hat and plan out for several op amp footprints (as purchased). embedd MPU6050 DONE
-
-- Decide whether mosfet is needed after all. list pros and cons anyway DONE
+-Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
 
 
+## Vibration Classification Strategy
 
-Batch Creation:DONE
-Define conditions for creating a batch (e.g., number of cycles before going to sleep, sufficient vibration data).
-Create batches of data that include accelerometer values, sampling cycle references, and timestamps.
+This table outlines how vibration data is classified into **machete, chainsaw, or no activity** using **FFT (acceleration data) and Zero-Crossing Rate (ZCR) on gyroscope data**.
 
-Excel File Handling:DONE
-Implement functionality to write batches to an Excel file stored locally on the ESP32S3 memory.
-You may need to explore libraries or develop your own functions to handle Excel file operations in C.
+| **Activity**  | **FFT Peak (Acceleration)** | **ZCR (Gyroscope Motion)** |
+|--------------|---------------------------|---------------------------|
+| **Chainsaw** | High (100-300 Hz) | Medium (consistent oscillations) |
+| **Machete**  | Moderate (50-150 Hz) | Very High (sudden swings) |
+| **No Activity** | Low (no strong peak) | Very Low (almost no motion) |
 
-MQTT Integration:
-Implement MQTT functionality to send the Excel file when required.
-Use appropriate MQTT libraries compatible with the ESP32S3 and your MQTT broker.
+### How It Works:
+1. **FFT Analysis (Accelerometer Data)**
+   - Determines dominant vibration frequencies.
+   - Helps differentiate between high-frequency (chainsaw) and lower-frequency (machete) activity.
 
-Code Integration:
-Integrate the above functionalities into the existing code structure, ensuring compatibility and proper function execution.
-Modify the main loop to handle data collection, batch creation, Excel file writing, and MQTT communication based on your defined conditions.
+2. **Zero-Crossing Rate (Gyroscope Data)**
+   - Counts how often the signal crosses zero.
+   - Helps detect chaotic swings (machete) vs. smoother, repetitive vibrations (chainsaw).
+
+3. **Final Classification:**
+   - **Chainsaw:** High FFT peak + Medium ZCR.
+   - **Machete:** Moderate FFT peak + Very High ZCR.
+   - **No Activity:** Low FFT peak + Very Low ZCR.
