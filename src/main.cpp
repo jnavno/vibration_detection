@@ -16,8 +16,8 @@
 #endif
 
 void setup() {
-    Serial.begin(SERIAL_BAUD);
-    debug_println("Starting setup...");
+    INIT_DEBUG_SERIAL();
+    LOG_DEBUGLN("Starting setup...");
 
     setupPower();  // Power up Vext
     toggleSensorPower(true);
@@ -27,14 +27,14 @@ void setup() {
     Wire.setClock(100000);
     delay(3000);
     if (!setupSensors()) {
-        debug_println("Sensor setup failed. Restarting...");
+        LOG_DEBUGLN("Sensor setup failed. Restarting...");
         while (1);  // Halt if setup fails, for debugging
     }
-    debug_println("Setting up SPIFFS...");
+    LOG_DEBUGLN("Setting up SPIFFS...");
     setupSPIFFS();
-    debug_println("Setting up commands...");
+    LOG_DEBUGLN("Setting up commands...");
     setupCommands();
-    debug_println("Setup complete.");
+    LOG_DEBUGLN("Setup complete.");
 }
 
 void loop() {

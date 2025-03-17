@@ -1,17 +1,52 @@
 #pragma once
 
-// Serial Baud Rate for debugging
-#ifndef SERIAL_BAUD
-#define SERIAL_BAUD 115200 // Default serial baud rate
+#include <Arduino.h>
+
+// ==============================
+// 🔹 DEBUG CONFIGURATION
+// ==============================
+
+// Define DEBUG levels (0 = off, 1 = minimal, 2 = full)
+#ifndef DEBUG_LEVEL
+#define DEBUG_LEVEL 1  // Default to minimal debugging
 #endif
 
-// DebugConfiguration.h
-#ifdef CFG_RELEASE
-    #define debug_printf(...)  // No operation in release mode
-    #define debug_print(...)   // No operation in release mode
-    #define debug_println(...) // No operation in release mode
+#if DEBUG_LEVEL > 0
+    #define INIT_DEBUG_SERIAL() Serial.begin(115200)  // Use Serial if debugging is enabled
+    #define LOG_DEBUG(...) Serial.printf(__VA_ARGS__)
+    #define LOG_DEBUGLN(...) Serial.println(__VA_ARGS__)
 #else
-    #define debug_printf(...)   Serial.printf(__VA_ARGS__)
-    #define debug_print(...)    Serial.print(__VA_ARGS__)
-    #define debug_println(...)  Serial.println(__VA_ARGS__)
+    #define INIT_DEBUG_SERIAL()  // Do nothing if debugging is off
+    #define LOG_DEBUG(...)  // No-op when debugging is off
+    #define LOG_DEBUGLN(...)
+#endif
+
+// ==============================
+// 🔹 FEATURE TOGGLES
+// ==============================
+
+// Enable Power-Saving Mode (use `-DPOWER_SAVE_MODE` in platformio.ini)
+#ifdef POWER_SAVE_MODE
+    #define DISABLE_UART 1
+    #define DISABLE_WIFI 1
+    #define DISABLE_BLUETOOTH 1
+#else
+    #define DISABLE_UART 0
+    #define DISABLE_WIFI 0
+    #define DISABLE_BLUETOOTH 0
+#endif
+
+// ==============================
+// 🔹 FEATURE TOGGLE LOGGING
+// ==============================
+
+#if DEBUG_LEVEL > 1
+    #define LOG_FEATURE_TOGGLE() do { \
+        LOG_DEBUGLN("Feature Toggles Active:"); \
+        LOG_DEBUG(" - DISABLE_UART: "); LOG_DEBUGLN(DISABLE_UART); \
+        LOG_DEBUG(" - DISABLE_WIFI: "); LOG_DEBUGLN(DISABLE_WIFI); \
+        LOG_DEBUG(" - DISABLE_BLUETOOTH: "); LOG_DEBUGLN(DISABLE_BLUETOOTH); \
+    } while (0)
+#else
+    #define LOG_FEATURE_TOGGLE()  // No-op when debugging is off
 #endif

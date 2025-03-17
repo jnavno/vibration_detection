@@ -4,7 +4,7 @@ TODO:
 
 - Add wifi disabling and other peripherals to lower consumption
 
--Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
+- Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
 
 
 ## Vibration Classification Strategy
