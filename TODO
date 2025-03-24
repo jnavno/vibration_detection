@@ -1,10 +1,9 @@
 TODO:
 
-- Fine tune the detection frequency for machete and handsaw
 
 - Add wifi disabling and other peripherals to lower consumption
 
--Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
+- Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
 
 
 ## Vibration Classification Strategy
@@ -30,3 +29,5 @@ This table outlines how vibration data is classified into **machete, chainsaw, o
    - **Chainsaw:** High FFT peak + Medium ZCR.
    - **Machete:** Moderate FFT peak + Very High ZCR.
    - **No Activity:** Low FFT peak + Very Low ZCR.
+
+- Update README file

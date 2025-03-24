@@ -4,12 +4,14 @@
 ---
 
 ### Overview
-This project implements FFT (Fast Fourier Transform) to identify the dominant frequencies transmitted to an accelerometer to classify specific events occurring on trees. Catering only to patterns that could indicate continuous sharp spikes, like machete cuts, or slightly lower-frequency vibrations like a handsaw or higher ones like a chainsaw. The system evaluates potential threats to trees and sends an alarm accordingly using real-time analysis over SPIFFS. The firmware is meshtastic-friendly. The device operates at <3uA of power idle. A significantly lower consumption compared to strategies such as sound analysis. The hardware features an ESP32-S3 microcontroller, MPU6050 accelerometer, TS881ICT nano-power opAmp.
+This project implements wavelet-based vibration analysis to classify specific events occurring on trees using an accelerometer. It can detect machete cuts, chainsaw operation, and ambient wind based on distinct vibration signatures. The system evaluates potential threats and sends alerts accordingly using real-time analysis. The firmware is Meshtastic-compatible and operates below 3μA when idle—; far more efficient than sound-based systems.The hardware features an ESP32-S3, MPU6050 accelerometer, TS881ICT nano-power opAmp.
 
 ---
 
 ### Key Features
 - **Accelerometer Sensing**: The system measures acceleration along three axes to detect tree shaking events.
+- **Wavelet Classification**: Real-time detection of vibration types (machete, chainsaw, or wind) using db4 wavelet decomposition and peak detection logic.
+
 - **Threshold Sensitivity**: Adjustable threshold values enable fine-tuning of sensitivity to detect shaking events, accounting for casing rigidity and full device weight values.
 - **Data Logging**: Accelerometer data and computed work values are logged into a CSV file on the SPIFFS filesystem.
 - **Alarm System**: An alarm is triggered if the detected shaking surpasses predefined thresholds, indicating potential threats to trees.
@@ -22,7 +24,7 @@ This project implements FFT (Fast Fourier Transform) to identify the dominant fr
     Interrupt wakes up the device. The interrupt is disabled.
     Accelerometer and battery gauge are powered on.
     System reads data stream,
-    Evaluates threads it into 3 different categories.
+    Evaluates the vibration waveform using wavelet energy bands and peak patterns to classify it into 3 categories.
     Decides whether to send an alarm or not.
     Battery levels are read and logged.
     Accelerometer and battery gauge are powered off.
