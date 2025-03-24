@@ -7,7 +7,7 @@ void setupCommands();
 void handleSerialCommands();
 
 void setupCommands() {
-    debug_println("Command handler setup complete.");
+    LOG_DEBUGLN("Command handler setup complete.");
 }
 
 void handleSerialCommands() {
@@ -22,7 +22,7 @@ void handleSerialCommands() {
         } else if (command == "extract_data") {
             extractDataOverSerial();
         } else {
-            debug_println("Unknown command.");
+            LOG_DEBUGLN("Unknown command.");
         }
     }
 }
