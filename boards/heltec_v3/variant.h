@@ -21,6 +21,8 @@ extern int SAMPLES;  // Dynamically updated sample size
 
 // Sampling Duration & Buffer Size
 #define SAMPLING_DURATION 60  // 60 seconds of monitoring
+#define SAMPLING_DURATION_ACCEL 12  // time block readings in secods
+#define SAMPLE_RATE_ACCEL_HZ 1000   //
 #define MAX_BUFFER_SIZE 24000  // Maximum buffer allocation (400 Hz * 60 sec)
 #define BLOCK_SIZE 128  // Define BLOCK_SIZE for FIFO buffer handling
 

@@ -67,7 +67,7 @@ void setup() {
     // Step 5: Send the result over Meshtastic
     // sendMeshtasticMessage(detected_activity);
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {   /*visual output: SETUP DONE*/
         digitalWrite(STATUS_LED_PIN, HIGH);
         delay(200);
         digitalWrite(STATUS_LED_PIN, LOW);
