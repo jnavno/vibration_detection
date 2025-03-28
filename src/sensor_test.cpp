@@ -8,13 +8,11 @@
 #include "variant.h"
 #include "driver/rtc_io.h"
 
-#define WAKEUP_TIME_US 259200000000ULL  // Deep Sleep Interval (72 hours)
-#define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
-#define TIME_TO_SLEEP  259200
+#define uS_TO_S_FACTOR 1000000ULL
+#define TIME_TO_SLEEP  259200   /*72h sleeping*/
 MPU6050 mpu;
 SFE_MAX1704X lipo;
 
-// **Function Prototypes**
 void powerVEXT(bool state);
 bool testMPU();
 bool testMAX();
@@ -54,24 +52,20 @@ void setup() {
     bool maxOK = testMAX();
     if (!maxOK) LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
 
-    LOG_DEBUGLN("Reading Sensor Data...");
-    int16_t ax, ay, az, gx, gy, gz;
-    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    delay(100);
-    float voltage = lipo.getVoltage();
-    float soc = lipo.getSOC();
+    readSensorData();
 
-    // **Print JSON Data**
-    LOG_DEBUGLN("=== SENSOR DATA ===");
-    Serial.print("{\"accel_x\": "); Serial.print(ax);
-    Serial.print(", \"accel_y\": "); Serial.print(ay);
-    Serial.print(", \"accel_z\": "); Serial.print(az);
-    Serial.print(", \"gyro_x\": "); Serial.print(gx);
-    Serial.print(", \"gyro_y\": "); Serial.print(gy);
-    Serial.print(", \"gyro_z\": "); Serial.print(gz);
-    Serial.print(", \"battery_v\": "); Serial.print(voltage, 2);
-    Serial.print(", \"battery_soc\": "); Serial.print(soc, 1);
-    Serial.println("}");
+    //TODO
+    // Step 2: Compute FFT on accelerometer Z-axis
+    // float fft_peak_acc = getFFTpeak(accZ);
+
+    // Step 3: Compute Zero-Crossing Rate on gyroscope Z-axis
+    // int zcr_gyro = computeZCR(gyroZ);
+
+    // Step 4: Classify the vibration event (Chainsaw / Machete / None)
+    // meshtastic_TreeShake detected_activity = classifyActivity(fft_peak_acc, zcr_gyro);
+
+    // Step 5: Send the result over Meshtastic
+    // sendMeshtasticMessage(detected_activity);
 
     for (int i = 0; i < 3; i++) {
         digitalWrite(STATUS_LED_PIN, HIGH);
@@ -83,9 +77,29 @@ void setup() {
     enterDeepSleep();
 }
 
-// **Power Control**
 void powerVEXT(bool state) {
     digitalWrite(VEXT_CTRL_PIN, state ? LOW : HIGH);
+}
+
+void readSensorData() {
+    LOG_DEBUGLN("Reading Sensor Data...");
+    int16_t ax, ay, az, gx, gy, gz;
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    delay(100);
+    float voltage = lipo.getVoltage();
+    float soc = lipo.getSOC();
+
+    LOG_DEBUGLN("=== SENSOR DATA ===");
+    Serial.print("{\"accel_x\": "); Serial.print(ax);
+    Serial.print(", \"accel_y\": "); Serial.print(ay);
+    Serial.print(", \"accel_z\": "); Serial.print(az);
+    Serial.print(", \"gyro_x\": "); Serial.print(gx);
+    Serial.print(", \"gyro_y\": "); Serial.print(gy);
+    Serial.print(", \"gyro_z\": "); Serial.print(gz);
+    Serial.print(", \"battery_v\": "); Serial.print(voltage, 2);
+    Serial.print(", \"battery_soc\": "); Serial.print(soc, 1);
+    Serial.println("}");
+
 }
 
 void disableWakeInterrupt() {
@@ -136,77 +150,6 @@ void disablePeripherals() {
     }
 }
 
-void prepare_for_deep_sleep() {
-    LOG_DEBUGLN("Preparing for deep sleep...");
-
-    // RTC GPIOs to be isolated
-    gpio_num_t rtc_pins_to_isolate[] = {
-        GPIO_NUM_1, GPIO_NUM_2
-    };
-
-    // Non-RTC GPIOs set to low-power state (input with pull-down)
-    gpio_num_t non_rtc_pins[] = {
-        GPIO_NUM_19, GPIO_NUM_20, GPIO_NUM_21, GPIO_NUM_26,
-        GPIO_NUM_33, GPIO_NUM_34, GPIO_NUM_35, GPIO_NUM_36,
-        GPIO_NUM_43, GPIO_NUM_44
-    };
-
-    // General unused GPIOs to prevent floating states
-    gpio_num_t unused_pins[] = {
-        GPIO_NUM_47, GPIO_NUM_48
-    };
-
-    // Isolate RTC GPIOs
-    LOG_DEBUGLN("Isolating RTC GPIOs to prevent leakage...");
-    for (size_t i = 0; i < sizeof(rtc_pins_to_isolate) / sizeof(rtc_pins_to_isolate[0]); i++) {
-        if (rtc_gpio_isolate(rtc_pins_to_isolate[i]) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to isolate RTC GPIO %d", rtc_pins_to_isolate[i]);
-        } else {
-            LOG_DEBUG("RTC GPIO %d isolated.", rtc_pins_to_isolate[i]);
-        }
-    }
-
-    // Setting non-RTC GPIOs as input with pull-down
-    LOG_DEBUGLN("Configuring non-RTC GPIOs for low power...");
-    for (size_t i = 0; i < sizeof(non_rtc_pins) / sizeof(non_rtc_pins[0]); i++) {
-        if (gpio_set_direction(non_rtc_pins[i], GPIO_MODE_INPUT) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to set GPIO %d as input.", non_rtc_pins[i]);
-        }
-        if (gpio_pulldown_en(non_rtc_pins[i]) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to enable pull-down on GPIO %d.", non_rtc_pins[i]);
-        }
-        if (gpio_hold_en(non_rtc_pins[i]) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to enable hold on GPIO %d.", non_rtc_pins[i]);
-        } else {
-            LOG_DEBUG("GPIO %d set to input with pull-down and hold enabled.", non_rtc_pins[i]);
-        }
-    }
-
-    // Configuring general unused GPIOs
-    LOG_DEBUGLN("Configuring unused GPIOs to prevent floating states...");
-    for (size_t i = 0; i < sizeof(unused_pins) / sizeof(unused_pins[0]); i++) {
-        if (gpio_set_direction(unused_pins[i], GPIO_MODE_INPUT) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to set GPIO %d as input.", unused_pins[i]);
-        }
-        if (gpio_pulldown_en(unused_pins[i]) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to enable pull-down on GPIO %d.", unused_pins[i]);
-        }
-        if (gpio_hold_en(unused_pins[i]) != ESP_OK) {
-            LOG_DEBUG("Error: Failed to enable hold on GPIO %d.", unused_pins[i]);
-        } else {
-            LOG_DEBUG("Unused GPIO %d set to input with pull-down and hold enabled.", unused_pins[i]);
-        }
-    }
-
-    // Keeping RTC Peripheral Power ON, required for wake-up sources
-    LOG_DEBUGLN("Keeping RTC Peripheral Power ON...");
-    if (esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON) != ESP_OK) {
-        LOG_DEBUGLN("Error: Failed to configure RTC power domain.");
-    }
-
-    LOG_DEBUGLN("System prepared for deep sleep.");
-}
-
 
 void enterDeepSleep() {
     LOG_DEBUGLN("Preparing for deep sleep...");
@@ -223,7 +166,6 @@ void enterDeepSleep() {
     delay(50);
 
     enableWakeInterrupt();
-    // prepare_for_deep_sleep();
 
     LOG_DEBUGLN("Entering deep sleep...");
     delay(100);
@@ -242,19 +184,23 @@ bool testMPU() {
         return false;
     }
 
-    // MPU6050 might be in sleep mode, this will wake it up.
-    mpu.setSleepEnabled(false);
+    mpu.setSleepEnabled(false); /*Prevents MPU to remain asleep after wakeup*/
     delay(100);
 
     LOG_DEBUGLN("MPU6050 initialized successfully.");
     return true;
 }
 
-// **MAX1704x Battery Sensor Initialization**
 bool testMAX() {
-    return lipo.begin();
-}
+    LOG_DEBUGLN("Initializing MAX17048...");
 
+    if (!lipo.begin()) {
+        LOG_DEBUGLN("ERROR: MAX17048 NOT detected!");
+        return false;
+    }
+
+    LOG_DEBUGLN("MAX17048 initialized successfully.");
+    return true;
+}
 void loop() {
-    // **Empty because ESP32 goes to sleep in setup()**
 }
