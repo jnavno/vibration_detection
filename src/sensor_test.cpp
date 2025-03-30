@@ -1,3 +1,17 @@
+/*
+/////////// BASIC SENSOR TESTING MODULE //////////////////
+///////////   MPU6050 & MAX1704X READINGS  ///////////////
+
+- DUAL wakeup turns on device (TIMER or EXT_0)
+- Device just outputs accel and battery readings automatically allocated from the stack
+- Accel data is collected at 1000Hz to fit training classifier purposes
+- Readings ignore gyroscope data due to negligible angular rotation for this use case
+- BLE is disabled to save power
+- INT from EXT_0 is disabled during operation
+- INT re-enabled before entering deep sleep
+
+*/
+
 #include <Wire.h>
 #include <MPU6050.h>   
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
@@ -20,6 +34,7 @@ void enterDeepSleep();
 void disablePeripherals();
 void disableWakeInterrupt();
 void enableWakeInterrupt();
+void readSensorData();
 
 void setup() {
     INIT_DEBUG_SERIAL();
@@ -93,9 +108,6 @@ void readSensorData() {
     Serial.print("{\"accel_x\": "); Serial.print(ax);
     Serial.print(", \"accel_y\": "); Serial.print(ay);
     Serial.print(", \"accel_z\": "); Serial.print(az);
-    Serial.print(", \"gyro_x\": "); Serial.print(gx);
-    Serial.print(", \"gyro_y\": "); Serial.print(gy);
-    Serial.print(", \"gyro_z\": "); Serial.print(gz);
     Serial.print(", \"battery_v\": "); Serial.print(voltage, 2);
     Serial.print(", \"battery_soc\": "); Serial.print(soc, 1);
     Serial.println("}");
@@ -175,6 +187,22 @@ void enterDeepSleep() {
     esp_deep_sleep_start();
 }
 
+bool verifyGyroDisabled(bool verbose = true) {
+    int16_t ax, ay, az, gx, gy, gz;
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    bool gyroDisabled = (gx == 0 && gy == 0 && gz == 0);
+
+    if (verbose) {
+        if (gyroDisabled) {
+            LOG_DEBUGLN("Gyroscope successfully disabled.");
+        } else {
+            LOG_DEBUGLN("WARNING: Gyroscope still active!");
+        }
+    }
+
+    return gyroDisabled;
+}
+
 bool testMPU() {
     LOG_DEBUGLN("Initializing MPU6050...");
 
@@ -186,10 +214,21 @@ bool testMPU() {
 
     mpu.setSleepEnabled(false); /*Prevents MPU to remain asleep after wakeup*/
     delay(100);
+        LOG_DEBUGLN("Disabling Gyroscope...");
+        mpu.setStandbyXGyroEnabled(true);
+        mpu.setStandbyYGyroEnabled(true);
+        mpu.setStandbyZGyroEnabled(true);
+        delay(10);
+        if (!verifyGyroDisabled()) {
+            LOG_DEBUGLN("ERROR: Gyroscope not properly disabled! Aborting.");
+            return false;
+        }
 
-    LOG_DEBUGLN("MPU6050 initialized successfully.");
-    return true;
+        LOG_DEBUGLN("MPU6050 gyroscope disabled successfully.");
+        LOG_DEBUGLN("MPU6050 initialized successfully.");
+        return true;
 }
+
 
 bool testMAX() {
     LOG_DEBUGLN("Initializing MAX17048...");

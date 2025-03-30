@@ -1,5 +1,7 @@
 TODO:
 
+- Update README file
+- flash sensor_test.cpp
 
 - Add wifi disabling and other peripherals to lower consumption
 
@@ -29,5 +31,3 @@ This table outlines how vibration data is classified into **machete, chainsaw, o
    - **Chainsaw:** High FFT peak + Medium ZCR.
    - **Machete:** Moderate FFT peak + Very High ZCR.
    - **No Activity:** Low FFT peak + Very Low ZCR.
-
-- Update README file
