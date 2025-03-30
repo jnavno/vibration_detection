@@ -1,11 +1,17 @@
 TODO:
 
+URGENT:
+- Implement data_logger_sd onto device
+- update sensor_test.cpp to collect data at SAMPLE_RATE_ACCEL_HZ 1000
+- PCB ready for production (find out where to send them, Spain?)
+
+THIS WEEK:
+- collect physical data on the device (ask Juan chainsaw again)
+- implement and test the clasifier with google lab (by Thursday)
+- repeaters ready to install by Friday (request $800 for installation expenses)
+
+NICE TO HAVE: 
 - Update README file
-- flash sensor_test.cpp
-
-- Add wifi disabling and other peripherals to lower consumption
-
-- Implement zero-crossing rate ZCR and FFT combined to acc for gyroscope data
 
 
 ## Vibration Classification Strategy
@@ -31,3 +37,15 @@ This table outlines how vibration data is classified into **machete, chainsaw, o
    - **Chainsaw:** High FFT peak + Medium ZCR.
    - **Machete:** Moderate FFT peak + Very High ZCR.
    - **No Activity:** Low FFT peak + Very Low ZCR.
+
+- Step 2: Compute FFT on accelerometer Z-axis
+   float fft_peak_acc = getFFTpeak(accZ);
+
+- Step 3: Compute Zero-Crossing Rate on gyroscope Z-axis
+   int zcr_gyro = computeZCR(gyroZ);
+
+- Step 4: Classify the vibration event (Chainsaw / Machete / None)
+   meshtastic_TreeShake detected_activity = classifyActivity(fft_peak_acc, zcr_gyro);
+
+- Step 5: Send the result over Meshtastic
+   sendMeshtasticMessage(detected_activity);
