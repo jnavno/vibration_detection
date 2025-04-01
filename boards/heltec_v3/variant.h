@@ -5,7 +5,7 @@
 #define VEXT_CTRL_PIN GPIO_NUM_36
 #define INTERRUPT_PIN GPIO_NUM_7
 #define STATUS_LED_PIN GPIO_NUM_4
-#define ALERT_LED_PIN GPIO_NUM_5       // Pin to read ALRT signal from MAX17048
+#define ALERT_LED_PIN GPIO_NUM_5  // Pin to read ALRT signal from MAX17048
 #define SDA_PIN GPIO_NUM_41
 #define SCL_PIN GPIO_NUM_42
 

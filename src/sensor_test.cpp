@@ -69,19 +69,6 @@ void setup() {
 
     readSensorData();
 
-    //TODO
-    // Step 2: Compute FFT on accelerometer Z-axis
-    // float fft_peak_acc = getFFTpeak(accZ);
-
-    // Step 3: Compute Zero-Crossing Rate on gyroscope Z-axis
-    // int zcr_gyro = computeZCR(gyroZ);
-
-    // Step 4: Classify the vibration event (Chainsaw / Machete / None)
-    // meshtastic_TreeShake detected_activity = classifyActivity(fft_peak_acc, zcr_gyro);
-
-    // Step 5: Send the result over Meshtastic
-    // sendMeshtasticMessage(detected_activity);
-
     for (int i = 0; i < 3; i++) {   /*visual output: SETUP DONE*/
         digitalWrite(STATUS_LED_PIN, HIGH);
         delay(200);
