@@ -1,17 +1,3 @@
-/*
-/////////// REAL WORLD VIBRATION DATA LOGGER //////////////////
-///////////   MICRO SD  //////////////////////////////////////
-
-- External switch turns on/off device
-- Device records 12 sec frames in an infinite loop until micro SD reaches 50% capacity
-- Collected data includes accelerometer and battery readings
-- Accel data is collected at 1000Hz to fit training classifier purposes 
-- Battery data is read at the end of each 12 sec frame and added to the json
-- Data is stored in litteFs format, with a timestamp
-
- 
-*/
-
 #include <Wire.h>
 #include <MPU6050.h>
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
@@ -23,25 +9,31 @@
 #include <SD.h>
 #include <SPI.h>
 
-
 // SD card pins on Heltec V3 (custom mapping)
-#define SD_CS_PIN     33
-#define SD_MOSI_PIN   34
-#define SD_MISO_PIN   35
-#define SD_SCK_PIN    36
+#define SD_CS_PIN     19   // Still a solid choice
+#define SD_MOSI_PIN   38   // Safe
+#define SD_MISO_PIN   39   // Safe
+#define SD_SCK_PIN    37   // Safe
 
 
 MPU6050 mpu;
 SFE_MAX1704X lipo;
 Preferences prefs;
 RTC_DATA_ATTR int bootCount = 0;
+SPIClass sdSPI;
+
+// Utility macro for debugging pin levels
+#define DUMP_SD_PINS() do { \
+  Serial.printf("CS: %d, MOSI: %d, MISO: %d, SCK: %d\n", \
+    digitalRead(SD_CS_PIN), digitalRead(SD_MOSI_PIN), \
+    digitalRead(SD_MISO_PIN), digitalRead(SD_SCK_PIN)); \
+} while(0)
 
 void powerVEXT(bool state);
 bool testMPU();
 bool testMAX();
 void readSensorsToFile();
 String getNextFilename();
-
 
 void setup() {
   INIT_DEBUG_SERIAL();
@@ -50,8 +42,9 @@ void setup() {
 
   pinMode(VEXT_CTRL_PIN, OUTPUT);
   powerVEXT(true);
+  delay(200); // Added: Allow peripherals to stabilize
+
   LOG_DEBUGLN("Sensors initialized.");
-  delay(100);
 
   Wire.begin(SDA_PIN, SCL_PIN);
   LOG_DEBUGLN("I2C reinitialized.");
@@ -65,28 +58,52 @@ void setup() {
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(ALERT_LED_PIN, OUTPUT);
 
+  LOG_DEBUGLN("Initializing SD...");
+  sdSPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+  sdSPI.setFrequency(400000);  // Reduced for stability
 
-  // Initialize SD card
-  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN);
-  if (!SD.begin(SD_CS_PIN)) {
-    LOG_DEBUGLN("[ERROR] SD card initialization failed.");
-    digitalWrite(ALERT_LED_PIN, HIGH);
-    delay(3000);
-    digitalWrite(ALERT_LED_PIN, LOW);
+  bool sd_ok = false;
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    LOG_DEBUG("Trying SD.begin() attempt "); LOG_DEBUGLN(attempt);
+    if (SD.begin(SD_CS_PIN, sdSPI)) {
+      sd_ok = true;
+      break;
+    }
+    delay(500);
+  }
+
+  if (!sd_ok) {
+    LOG_DEBUGLN("[ERROR] SD.begin() failed after retries.");
+    DUMP_SD_PINS();  // Show SPI pin states
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(ALERT_LED_PIN, HIGH); delay(300);
+      digitalWrite(ALERT_LED_PIN, LOW); delay(300);
+    }
     ESP.restart();
   }
+
   LOG_DEBUGLN("[✔] SD card initialized.");
+  LOG_DEBUG("Using SPI pins — CS="); LOG_DEBUGLN(SD_CS_PIN);
+  LOG_DEBUG(", MOSI="); LOG_DEBUGLN(SD_MOSI_PIN);
+  LOG_DEBUG(", MISO="); LOG_DEBUGLN(SD_MISO_PIN);
+  LOG_DEBUG(", SCK="); LOG_DEBUGLN(SD_SCK_PIN);
+
+  File file = SD.open("/test.txt", FILE_WRITE);
+  if (file) {
+    file.println("Hello SD card!");
+    file.close();
+    Serial.println("Write successful.");
+  } else {
+    Serial.println("Failed to open file.");
+  }
 
   prefs.begin("accel", false);
   readSensorsToFile();
 
-  for (int i = 0; i < 3; i++) {   /*visual output: SETUP DONE*/
-    digitalWrite(STATUS_LED_PIN, HIGH);
-    delay(200);
-    digitalWrite(STATUS_LED_PIN, LOW);
-    delay(200);
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(STATUS_LED_PIN, HIGH); delay(200);
+    digitalWrite(STATUS_LED_PIN, LOW); delay(200);
   }
-
 }
 
 void loop() {}
@@ -95,34 +112,23 @@ void powerVEXT(bool state) {
   digitalWrite(VEXT_CTRL_PIN, state ? LOW : HIGH);
 }
 
-// void readSensorData() {
-//   LOG_DEBUGLN("Reading Sensor Data...");
-//   int16_t ax, ay, az, gx, gy, gz;
-//   mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-//   delay(100);
-//   float voltage = lipo.getVoltage();
-//   float soc = lipo.getSOC();
-
-//   LOG_DEBUGLN("=== SENSOR DATA ===");
-//   Serial.print("{\"accel_x\": "); Serial.print(ax);
-//   Serial.print(", \"accel_y\": "); Serial.print(ay);
-//   Serial.print(", \"accel_z\": "); Serial.print(az);
-//   Serial.print(", \"gyro_x\": "); Serial.print(gx);
-//   Serial.print(", \"gyro_y\": "); Serial.print(gy);
-//   Serial.print(", \"gyro_z\": "); Serial.print(gz);
-//   Serial.print(", \"battery_v\": "); Serial.print(voltage, 2);
-//   Serial.print(", \"battery_soc\": "); Serial.print(soc, 1);
-//   Serial.println("}");
-
-// }
-
 bool testMPU() {
   mpu.initialize();
   return mpu.testConnection();
 }
 
 bool testMAX() {
-  return lipo.begin();
+  bool ok = lipo.begin();
+  if (!ok) {
+    LOG_DEBUGLN("[MAX1704x] begin() failed.");
+    return false;
+  }
+
+  LOG_DEBUG("[MAX1704x] Voltage: ");
+  LOG_DEBUGLN(lipo.getVoltage(), 2);
+  LOG_DEBUG("[MAX1704x] SOC: ");
+  LOG_DEBUGLN(lipo.getSOC(), 2);
+  return true;
 }
 
 String getNextFilename() {
@@ -132,19 +138,15 @@ String getNextFilename() {
   return "/accel" + String(count) + ".csv";
 }
 
-/*
-TODO
-- find out need for switch off gyro
-- */
 void readSensorsToFile() {
   String filename = getNextFilename();
   File file = SD.open(filename, FILE_WRITE);
   if (!file) {
-    Serial.println("[ERROR] Could not open file on SD card.");
+    Serial.printf("[ERROR] Could not open file: %s\n", filename.c_str());
     return;
   }
 
-  file.println("timestamp_ms,accel_x,accel_y,accel_z");
+  file.println("timestamp_ms,accel_x,accel_y,accel_z,voltage,soc");
   Serial.printf("Recording to %s...\n", filename.c_str());
 
   unsigned long startTime = millis();
@@ -158,7 +160,7 @@ void readSensorsToFile() {
       float voltage = lipo.getVoltage();
       float soc = lipo.getSOC();
       unsigned long now = millis();
-      file.printf("%lu,%d,%d,%d\n", voltage, soc, now - startTime, ax, ay, az);
+      file.printf("%lu,%d,%d,%d,%.2f,%.1f\n", now - startTime, ax, ay, az, voltage, soc);
       nextSample += interval;
     }
   }

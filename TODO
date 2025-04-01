@@ -1,5 +1,6 @@
 TODO:
 
+- SOC values still output 0.0. Need to correct that
 - Update README file
 - flash sensor_test.cpp
 

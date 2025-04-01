@@ -1,7 +1,7 @@
 #include "powerManager.h"
 #include "DebugConfiguration.h"
 #include <Arduino.h>
-#include <variant.h>
+#include "variant.h"
 #include <Wire.h>
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
 
