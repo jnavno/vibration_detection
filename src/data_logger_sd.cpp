@@ -1,3 +1,34 @@
+/*
+/////////// BASIC microSD DATALOGGER MODULE //////////////////
+///////////   MPU6050 & MAX1704X READINGS  ///////////////
+
+- Records multiple 12-second blocks of accelerometer and battery data to microSD
+- Number of blocks is configurable via NUM_BLOCKS
+- Data is collected at 1000Hz to support vibration classification
+- Accelerometer readings include X, Y, Z axes only (no gyroscope)
+- Battery readings include voltage and SOC via MAX17048
+- Collected data is saved to CSV files: /accelN.csv (auto-incremented)
+- SD card is initialized over custom software SPI pins
+- VEXT power rail is toggled ON to power sensors
+- Debugging is controlled via DEBUG_LEVEL in DebugConfiguration.h
+*/
+
+/*
+/////////// LED FEEDBACK LEGEND //////////////////
+
+Purpose                     LED     Pattern               Meaning
+---------------------------------------------------------------------
+✅ SD card initialized      STATUS  3 short blinks        System ready to log
+🟥 SD init failed           ALERT   3 slow blinks         Error condition, system restarting
+🟨 Each 12s block finished  STATUS  1 very quick blink    Block saved to microSD
+❌ Sensor not detected      ALERT   5 short blinks        Warning: sensor problem (MPU or MAX)
+✅ Final completion         STATUS  3 slow blinks         All blocks complete
+---------------------------------------------------------------------
+See blinkLED(), blinkStatus*, and blinkAlert* for implementation.
+*/
+
+
+
 #include <Wire.h>
 #include <MPU6050.h>
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
@@ -9,25 +40,28 @@
 #include <SD.h>
 #include <SPI.h>
 
-// SD card pins on Heltec V3 (custom mapping)
-#define SD_CS_PIN     19   // Still a solid choice
-#define SD_MOSI_PIN   38   // Safe
-#define SD_MISO_PIN   39   // Safe
-#define SD_SCK_PIN    37   // Safe
-
-
 MPU6050 mpu;
 SFE_MAX1704X lipo;
 Preferences prefs;
 RTC_DATA_ATTR int bootCount = 0;
 SPIClass sdSPI;
 
-// Utility macro for debugging pin levels
-#define DUMP_SD_PINS() do { \
-  Serial.printf("CS: %d, MOSI: %d, MISO: %d, SCK: %d\n", \
-    digitalRead(SD_CS_PIN), digitalRead(SD_MOSI_PIN), \
-    digitalRead(SD_MISO_PIN), digitalRead(SD_SCK_PIN)); \
-} while(0)
+//Modular LED Blink Utilities
+void blinkLED(int pin, int blinks, int on_ms, int off_ms) {
+  for (int i = 0; i < blinks; i++) {
+    digitalWrite(pin, HIGH);
+    delay(on_ms);
+    digitalWrite(pin, LOW);
+    delay(off_ms);
+  }
+}
+
+void blinkStatusShort()    { blinkLED(STATUS_LED_PIN, 3, 100, 100); }
+void blinkStatusQuick()    { blinkLED(STATUS_LED_PIN, 1, 40, 40); }
+void blinkStatusSlow()     { blinkLED(STATUS_LED_PIN, 3, 300, 200); }
+void blinkAlertError()     { blinkLED(ALERT_LED_PIN, 3, 300, 300); }
+void blinkAlertSensor()    { blinkLED(ALERT_LED_PIN, 5, 100, 100); }
+
 
 void powerVEXT(bool state);
 bool testMPU();
@@ -44,6 +78,9 @@ void setup() {
   powerVEXT(true);
   delay(200); //peripherals to stabilize
 
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  pinMode(ALERT_LED_PIN, OUTPUT);
+
   LOG_DEBUGLN("Sensors initialized.");
 
   Wire.begin(SDA_PIN, SCL_PIN);
@@ -51,12 +88,12 @@ void setup() {
 
   bool mpuOK = testMPU();
   if (!mpuOK) LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
+  blinkAlertSensor();
 
   bool maxOK = testMAX();
   if (!maxOK) LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
+  blinkAlertSensor();
 
-  pinMode(STATUS_LED_PIN, OUTPUT);
-  pinMode(ALERT_LED_PIN, OUTPUT);
 
   LOG_DEBUGLN("Initializing SD...");
   sdSPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
@@ -76,6 +113,7 @@ void setup() {
   if (!sd_ok) {
     LOG_DEBUGLN("[ERROR] SD.begin() failed after retries.");
     DUMP_SD_PINS();
+    blinkAlertError();
     for (int i = 0; i < 3; i++) {
       digitalWrite(ALERT_LED_PIN, HIGH); delay(300);
       digitalWrite(ALERT_LED_PIN, LOW); delay(300);
@@ -98,13 +136,17 @@ void setup() {
     Serial.println("Failed to open file.");
   }
 
-  prefs.begin("accel", false);
-  readSensorsToFile();
+  blinkStatusShort();
 
-  for (int i = 0; i < 3; i++) {
-    digitalWrite(STATUS_LED_PIN, HIGH); delay(200);
-    digitalWrite(STATUS_LED_PIN, LOW); delay(200);
+  prefs.begin("accel", false);
+  for (int i = 0; i < NUM_BLOCKS; i++) {
+    LOG_DEBUG("[✔] Recording block %d of %d\n", i + 1, NUM_BLOCKS);
+    readSensorsToFile();
+    blinkStatusQuick(); // blink after each block recorded
+    delay(200); // Small gap between blocks
   }
+
+  blinkStatusSlow(); // final success pattern
 }
 
 void loop() {}
@@ -161,7 +203,7 @@ bool testMAX() {
   }
 
   LOG_DEBUGLN("[MAX1704x] Monitoring initial SOC...");
-
+  //necessary to settle the coloumb count and make sure the readings are accurate
   for (int i = 0; i < 5; i++) {
     float voltage = lipo.getVoltage();
     float soc = lipo.getSOC();
@@ -171,11 +213,6 @@ bool testMAX() {
 
   return true;
 }
-
-
-
-
-
 
 String getNextFilename() {
   int count = prefs.getInt("fileCount", 0);

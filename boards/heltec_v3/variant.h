@@ -8,6 +8,10 @@
 #define ALERT_LED_PIN GPIO_NUM_5  // Pin to read ALRT signal from MAX17048
 #define SDA_PIN GPIO_NUM_41
 #define SCL_PIN GPIO_NUM_42
+#define SD_CS_PIN     19
+#define SD_MOSI_PIN   38
+#define SD_MISO_PIN   39
+#define SD_SCK_PIN    37
 
 //  Battery Thresholds
 #define MIN_BATT_VOLTAGE 3.3 //low voltage alert threshold
@@ -25,6 +29,7 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define SAMPLE_RATE_ACCEL_HZ 1000   //
 #define MAX_BUFFER_SIZE 24000  // Maximum buffer allocation (400 Hz * 60 sec)
 #define BLOCK_SIZE 128  // Define BLOCK_SIZE for FIFO buffer handling
+#define NUM_BLOCKS 25 // Number of consecutive 12s blocks to record (data_logger_sd.cpp)
 
 // Vibration Detection Thresholds and Frequencies
 #ifndef MPU6050_DEFAULT_ADDRESS

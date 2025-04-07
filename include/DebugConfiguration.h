@@ -15,6 +15,11 @@
     #define INIT_DEBUG_SERIAL() Serial.begin(115200)  // Use Serial if debugging is enabled
     #define LOG_DEBUG(...) Serial.printf(__VA_ARGS__)
     #define LOG_DEBUGLN(...) Serial.println(__VA_ARGS__)
+    #define DUMP_SD_PINS() do { \
+        Serial.printf("CS: %d, MOSI: %d, MISO: %d, SCK: %d\n", \
+            digitalRead(SD_CS_PIN), digitalRead(SD_MOSI_PIN), \
+            digitalRead(SD_MISO_PIN), digitalRead(SD_SCK_PIN)); \
+    } while(0)
 #else
     #define INIT_DEBUG_SERIAL()  // Do nothing if debugging is off
     #define LOG_DEBUG(...)  // No-op when debugging is off
