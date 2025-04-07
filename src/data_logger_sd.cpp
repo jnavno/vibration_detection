@@ -42,7 +42,7 @@ void setup() {
 
   pinMode(VEXT_CTRL_PIN, OUTPUT);
   powerVEXT(true);
-  delay(200); // Added: Allow peripherals to stabilize
+  delay(200); //peripherals to stabilize
 
   LOG_DEBUGLN("Sensors initialized.");
 
@@ -72,9 +72,10 @@ void setup() {
     delay(500);
   }
 
+  // Show SPI pin states
   if (!sd_ok) {
     LOG_DEBUGLN("[ERROR] SD.begin() failed after retries.");
-    DUMP_SD_PINS();  // Show SPI pin states
+    DUMP_SD_PINS();
     for (int i = 0; i < 3; i++) {
       digitalWrite(ALERT_LED_PIN, HIGH); delay(300);
       digitalWrite(ALERT_LED_PIN, LOW); delay(300);
@@ -118,18 +119,63 @@ bool testMPU() {
 }
 
 bool testMAX() {
-  bool ok = lipo.begin();
-  if (!ok) {
-    LOG_DEBUGLN("[MAX1704x] begin() failed.");
+  LOG_DEBUGLN("Initializing MAX17048...");
+
+  if (!lipo.begin()) {
+    LOG_DEBUGLN("[MAX1704x] begin() failed — sensor not detected.");
     return false;
   }
 
-  LOG_DEBUG("[MAX1704x] Voltage: ");
-  LOG_DEBUGLN(lipo.getVoltage(), 2);
-  LOG_DEBUG("[MAX1704x] SOC: ");
-  LOG_DEBUGLN(lipo.getSOC(), 2);
+  delay(200); // Settle I2C
+
+  // Read version register
+  Wire.beginTransmission(0x36);
+  Wire.write(0x08);
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x36, 2);
+  uint16_t version = (Wire.read() << 8) | Wire.read();
+  LOG_DEBUG("[MAX1704x] Version: 0x%04X\n", version);
+
+  // Read CONFIG to check sleep bit
+  Wire.beginTransmission(0x36);
+  Wire.write(0x0C);
+  Wire.endTransmission(false);
+  Wire.requestFrom(0x36, 2);
+  uint16_t config = (Wire.read() << 8) | Wire.read();
+  bool sleeping = config & (1 << 7);
+  LOG_DEBUG("[MAX1704x] CONFIG: 0x%04X — Sleeping: %s\n", config, sleeping ? "Yes" : "No");
+
+  // Send reset command
+  Wire.beginTransmission(0x36);
+  Wire.write(0xFE);
+  Wire.write(0x00);
+  Wire.write(0x54);
+  Wire.endTransmission();
+  LOG_DEBUGLN("[MAX1704x] Reset command sent.");
+
+  delay(1000); // Let it reboot
+
+  if (!lipo.begin()) {
+    LOG_DEBUGLN("[MAX1704x] Re-init after reset failed.");
+    return false;
+  }
+
+  LOG_DEBUGLN("[MAX1704x] Monitoring initial SOC...");
+
+  for (int i = 0; i < 5; i++) {
+    float voltage = lipo.getVoltage();
+    float soc = lipo.getSOC();
+    LOG_DEBUG("[MAX1704x] Voltage: %.2f V, SOC: %.2f %%\n", voltage, soc);
+    delay(1000);
+  }
+
   return true;
 }
+
+
+
+
+
 
 String getNextFilename() {
   int count = prefs.getInt("fileCount", 0);
