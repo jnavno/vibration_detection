@@ -31,7 +31,9 @@ See blinkLED(), blinkStatus*, and blinkAlert* for implementation.
 
 #include <Wire.h>
 #include <MPU6050.h>
+#ifdef USE_MAX1704X
 #include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h>
+#endif
 #include <esp_sleep.h>
 #include <Preferences.h>
 #include <driver/touch_pad.h>
@@ -41,10 +43,13 @@ See blinkLED(), blinkStatus*, and blinkAlert* for implementation.
 #include <SPI.h>
 
 MPU6050 mpu;
+#ifdef USE_MAX1704X
 SFE_MAX1704X lipo;
+#endif
 Preferences prefs;
 RTC_DATA_ATTR int bootCount = 0;
 SPIClass sdSPI;
+bool max1704xPresent = false;
 
 //Modular LED Blink Utilities
 void blinkLED(int pin, int blinks, int on_ms, int off_ms) {
@@ -91,7 +96,7 @@ void setup() {
   blinkAlertSensor();
 
   bool maxOK = testMAX();
-  if (!maxOK) LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
+  if (!max1704xPresent) LOG_DEBUGLN("ERROR: MAX1704x NOT detected or disabled!");
   blinkAlertSensor();
 
 
@@ -143,7 +148,7 @@ void setup() {
     LOG_DEBUG("[✔] Recording block %d of %d\n", i + 1, NUM_BLOCKS);
     readSensorsToFile();
     blinkStatusQuick(); // blink after each block recorded
-    delay(200); // Small gap between blocks
+    delay(200);
   }
 
   blinkStatusSlow(); // final success pattern
@@ -161,8 +166,8 @@ bool testMPU() {
 }
 
 bool testMAX() {
+  #ifdef USE_MAX1704X
   LOG_DEBUGLN("Initializing MAX17048...");
-
   if (!lipo.begin()) {
     LOG_DEBUGLN("[MAX1704x] begin() failed — sensor not detected.");
     return false;
@@ -212,6 +217,9 @@ bool testMAX() {
   }
 
   return true;
+  #else
+  return false;
+  #endif
 }
 
 String getNextFilename() {
@@ -240,8 +248,16 @@ void readSensorsToFile() {
     if (millis() >= nextSample) {
       int16_t ax, ay, az, gx, gy, gz;
       mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-      float voltage = lipo.getVoltage();
-      float soc = lipo.getSOC();
+
+      float voltage = -1.0f;
+      float soc = -1.0f;;
+      #ifdef USE_MAX1704X
+        if (max1704xPresent) {
+          voltage = lipo.getVoltage();
+          soc = lipo.getSOC();
+        }
+        #endif
+
       unsigned long now = millis();
       file.printf("%lu,%d,%d,%d,%.2f,%.1f\n", now - startTime, ax, ay, az, voltage, soc);
       nextSample += interval;
