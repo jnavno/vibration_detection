@@ -3,7 +3,9 @@ TODO:
 URGENT:
 - Implement data_logger_sd onto device    DONE
 - update sensor_test.cpp to collect data at SAMPLE_RATE_ACCEL_HZ 1000 DONE
-- Assembl of the datalogger version of the sensor to take to Spain
+- Assembl of the datalogger version of the sensor to take to Spain   DONE
+- wrap up MAX1740 into an ifdef so that if not present no error
+- use on board LED heltec to displayy alarms for the data_logger_sd case only
 - PCB ready for production 1.check TODO in easyEDA (find out where to send them, Spain?)
 
 THIS WEEK:
@@ -19,6 +21,7 @@ BEFORE THE 10TH:
 - sensor example module test distance done
 
 WHILE IN SPAIN:
+- repeater board NO WOOD! but plastic, maybe pvc?
 - Data logging with chainsaw bot horizontal and vertical
 - extraction of data + elaboration of classifier done
 - receive PCB's and send to factory the other 40 done
@@ -26,6 +29,7 @@ WHILE IN SPAIN:
 
 ON ARRIVAL TO ECUADOR (until 15th May)
 - Router code + hardware test full system
+- seal repeaters completely from moist
 
 NICE TO HAVE: 
 - Update README file

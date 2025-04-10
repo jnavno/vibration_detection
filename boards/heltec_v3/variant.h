@@ -5,13 +5,13 @@
 #define VEXT_CTRL_PIN GPIO_NUM_36
 #define INTERRUPT_PIN GPIO_NUM_7
 #define STATUS_LED_PIN GPIO_NUM_4
-#define ALERT_LED_PIN GPIO_NUM_5  // Pin to read ALRT signal from MAX17048
+#define ALERT_LED_PIN GPIO_NUM_5
 #define SDA_PIN GPIO_NUM_41
 #define SCL_PIN GPIO_NUM_42
-#define SD_CS_PIN     19
-#define SD_MOSI_PIN   38
-#define SD_MISO_PIN   39
-#define SD_SCK_PIN    37
+#define SD_CS_PIN GPIO_NUM_19
+#define SD_MOSI_PIN GPIO_NUM_38
+#define SD_MISO_PIN GPIO_NUM_39
+#define SD_SCK_PIN GPIO_NUM_37
 
 //  Battery Thresholds
 #define MIN_BATT_VOLTAGE 3.3 //low voltage alert threshold
