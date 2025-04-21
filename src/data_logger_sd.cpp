@@ -173,6 +173,11 @@ void setup() {
   }
 
   blinkStatusSlow();
+
+  LOG_DEBUGLN("All recordings completed. Entering deep sleep now...");
+  delay(500);
+  esp_deep_sleep_start();
+
 }
 
 bool sdHasAccelFiles() {
@@ -183,7 +188,7 @@ bool sdHasAccelFiles() {
 
     String name = entry.name();
     entry.close();
-    if (name.startsWith("/accel_sd_") && name.endsWith(".csv")) {
+    if (name.startsWith("accel_sd_") && name.endsWith(".csv")) {
       return true;
     }
   }
