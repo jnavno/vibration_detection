@@ -50,3 +50,12 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define ENABLE_INTERRUPT true
 #define MONITOR_DURATION 60000  // 60 seconds
 #define VIBRATION_THRESHOLD 0.5  // Threshold for increasing sampling rate
+
+// SD logger file ONLY
+#define PASSIVE_MODE true
+#define STATE_FILENAME "/log_state.txt"
+#define BATCH_DURATION_MS (BLOCKS_PER_BATCH * SAMPLING_DURATION_ACCEL * 1000 + 200 * BLOCKS_PER_BATCH)
+#define SIMULATED_BATCH_SECONDS 1200  // 20 min sleep + ~5 min active = ~25 min total
+#define TOTAL_LOGGING_HOURS 24.0      // Full 24 hours of logging
+#define BLOCKS_PER_BATCH 25           // ~5 minutes worth of blocks
+#define BATCH_SLEEP_MINUTES 20.0      // Sleep 20 minutes between batches

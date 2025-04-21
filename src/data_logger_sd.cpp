@@ -24,7 +24,6 @@ Purpose                     LED     Pattern               Meaning
 ❌ Sensor not detected      ALERT   5 short blinks        Warning: sensor problem (MPU or MAX)
 ✅ Final completion         STATUS  3 slow blinks         All blocks complete
 ---------------------------------------------------------------------
-See blinkLED(), blinkStatus*, and blinkAlert* for implementation.
 */
 
 #include <Wire.h>
@@ -45,13 +44,14 @@ MPU6050 mpu;
 SFE_MAX1704X lipo;
 #endif
 Preferences prefs;
-RTC_DATA_ATTR int bootCount = 0;
-RTC_DATA_ATTR int sessionFileIndex = 0;
 SPIClass sdSPI;
 bool max1704xPresent = false;
-String sessionID;
 
-// Convert integer to session string (a, b, ..., z, aa, ab, ...)
+RTC_DATA_ATTR int sessionFileIndex = 0;
+String sessionID;
+uint64_t loggingStartTime = 0;
+int totalActiveCycles = 0;
+
 String getSessionString(int index) {
   String result = "";
   do {
@@ -61,7 +61,6 @@ String getSessionString(int index) {
   return result;
 }
 
-// Modular LED Blink Utilities
 void blinkLED(int pin, int blinks, int on_ms, int off_ms) {
   for (int i = 0; i < blinks; i++) {
     digitalWrite(pin, HIGH);
@@ -84,6 +83,44 @@ void readSensorsToFile();
 String getNextFilename();
 bool sdHasAccelFiles();
 
+bool loadLogStateFromSD(uint64_t &logStart, int &cycles) {
+  File file = SD.open(STATE_FILENAME, FILE_READ);
+  if (!file) return false;
+
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    if (line.startsWith("logStart=")) {
+      logStart = strtoull(line.substring(9).c_str(), nullptr, 10);
+    } else if (line.startsWith("activeCycles=")) {
+      cycles = line.substring(13).toInt();
+    }
+  }
+
+  file.close();
+  return true;
+}
+
+void saveLogStateToSD(uint64_t logStart, int cycles) {
+  File file = SD.open(STATE_FILENAME, FILE_WRITE);
+  if (!file) return;
+
+  file.printf("logStart=%llu\n", logStart);
+  file.printf("activeCycles=%d\n", cycles);
+  file.close();
+}
+
+bool sdHasAccelFiles() {
+  File root = SD.open("/");
+  while (true) {
+    File entry = root.openNextFile();
+    if (!entry) break;
+    String name = entry.name();
+    entry.close();
+    if (name.startsWith("accel_sd_") && name.endsWith(".csv")) return true;
+  }
+  return false;
+}
 
 void setup() {
   INIT_DEBUG_SERIAL();
@@ -91,32 +128,31 @@ void setup() {
   delay(100);
 
   pinMode(VEXT_CTRL_PIN, OUTPUT);
-  powerVEXT(true);
-  delay(200);
-
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(ALERT_LED_PIN, OUTPUT);
-
-  LOG_DEBUGLN("Sensors initialized.");
+  powerVEXT(true);
+  delay(200);
 
   Wire.begin(SDA_PIN, SCL_PIN);
   LOG_DEBUGLN("I2C reinitialized.");
 
-  bool mpuOK = testMPU();
-  if (!mpuOK) LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
-  blinkAlertSensor();
+  if (!testMPU()) {
+    LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
+    blinkAlertSensor();
+  }
 
-  bool maxOK = testMAX();
-  if (!max1704xPresent) LOG_DEBUGLN("ERROR: MAX1704x NOT detected or disabled!");
-  blinkAlertSensor();
+  max1704xPresent = testMAX();
+  if (!max1704xPresent) {
+    LOG_DEBUGLN("ERROR: MAX1704x NOT detected or disabled!");
+    blinkAlertSensor();
+  }
 
   LOG_DEBUGLN("Initializing SD...");
   sdSPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
   sdSPI.setFrequency(400000);
 
   bool sd_ok = false;
-  for (int attempt = 1; attempt <= 3; attempt++) {
-    LOG_DEBUG("Trying SD.begin() attempt "); LOG_DEBUGLN(attempt);
+  for (int i = 0; i < 3; i++) {
     if (SD.begin(SD_CS_PIN, sdSPI)) {
       sd_ok = true;
       break;
@@ -125,76 +161,75 @@ void setup() {
   }
 
   if (!sd_ok) {
-    LOG_DEBUGLN("[ERROR] SD.begin() failed after retries.");
-    DUMP_SD_PINS();
+    LOG_DEBUGLN("[ERROR] SD failed.");
     blinkAlertError();
-    for (int i = 0; i < 3; i++) {
-      digitalWrite(ALERT_LED_PIN, HIGH); delay(300);
-      digitalWrite(ALERT_LED_PIN, LOW); delay(300);
-    }
     ESP.restart();
   }
 
-  LOG_DEBUGLN("[\u2713] SD card initialized.");
-  LOG_DEBUG("Using SPI pins — CS="); LOG_DEBUGLN(SD_CS_PIN);
-  LOG_DEBUG(", MOSI="); LOG_DEBUGLN(SD_MOSI_PIN);
-  LOG_DEBUG(", MISO="); LOG_DEBUGLN(SD_MISO_PIN);
-  LOG_DEBUG(", SCK="); LOG_DEBUGLN(SD_SCK_PIN);
-
-  File file = SD.open("/test.txt", FILE_WRITE);
-  if (file) {
-    file.println("Hello SD card!");
-    file.close();
-    Serial.println("Write successful.");
-  } else {
-    Serial.println("Failed to open file.");
-  }
-
+  LOG_DEBUGLN("[✓] SD initialized.");
   blinkStatusShort();
 
-  prefs.begin("accel", false);
-  if (!sdHasAccelFiles()) {
-    LOG_DEBUGLN("[Info] No accel_sd_*.csv files found — resetting sessionIndex.");
-    prefs.putInt("sessionIndex", 0);
+  if (!loadLogStateFromSD(loggingStartTime, totalActiveCycles)) {
+    loggingStartTime = 0;
+    totalActiveCycles = 0;
+    saveLogStateToSD(loggingStartTime, totalActiveCycles);
+    LOG_DEBUGLN("[INFO] State file not found. Creating new logStart and cycle count.");
   }
-  int sessionIndex = prefs.getInt("sessionIndex", 0);
+
+  int sessionIndex = 0;
+  File indexFile = SD.open("/session_index.txt", FILE_READ);
+  if (indexFile) {
+    sessionIndex = indexFile.parseInt();
+    indexFile.close();
+  }
   sessionID = getSessionString(sessionIndex);
-  prefs.putInt("sessionIndex", sessionIndex + 1);
-  prefs.end();
+  indexFile = SD.open("/session_index.txt", FILE_WRITE);
+  if (indexFile) {
+    indexFile.printf("%d\n", sessionIndex + 1);
+    indexFile.close();
+  }
+
+  if (PASSIVE_MODE) {
+    uint64_t elapsed = totalActiveCycles * SIMULATED_BATCH_SECONDS;
+    uint64_t maxSeconds = TOTAL_LOGGING_HOURS * 3600.0;
+
+    LOG_DEBUG("TotalActiveCycles: %d\n", totalActiveCycles);
+    LOG_DEBUG("Elapsed (s):       %llu\n", elapsed);
+    LOG_DEBUG("MaxAllowed (s):    %llu\n", maxSeconds);
+
+    if (elapsed >= maxSeconds) {
+      LOG_DEBUGLN("✅ Logging window complete. Entering permanent deep sleep.");
+      SD.remove(STATE_FILENAME);
+      blinkLED(ALERT_LED_PIN, 10, 150, 150);
+      esp_deep_sleep_start();
+    }
+
+    LOG_DEBUG("Passive Mode - Batch %d\n", totalActiveCycles + 1);
+  }
 
   sessionFileIndex = 0;
   LOG_DEBUG("Session ID: %s\n", sessionID.c_str());
 
-  for (int i = 0; i < NUM_BLOCKS; i++) {
-    LOG_DEBUG("[\u2713] Recording block %d of %d\n", i + 1, NUM_BLOCKS);
+  int blocksToRun = PASSIVE_MODE ? BLOCKS_PER_BATCH : NUM_BLOCKS;
+  for (int i = 0; i < blocksToRun; i++) {
+    LOG_DEBUG("[✓] Recording block %d of %d\n", i + 1, blocksToRun);
     readSensorsToFile();
     blinkStatusQuick();
     delay(200);
   }
 
-  blinkStatusSlow();
-
-  LOG_DEBUGLN("All recordings completed. Entering deep sleep now...");
-  delay(500);
-  esp_deep_sleep_start();
-
-}
-
-bool sdHasAccelFiles() {
-  File root = SD.open("/");
-  while (true) {
-    File entry = root.openNextFile();
-    if (!entry) break;
-
-    String name = entry.name();
-    entry.close();
-    if (name.startsWith("accel_sd_") && name.endsWith(".csv")) {
-      return true;
-    }
+  if (PASSIVE_MODE) {
+    totalActiveCycles++;
+    saveLogStateToSD(loggingStartTime, totalActiveCycles);
+    LOG_DEBUG("Sleeping for %.2f minutes before next batch...\n", BATCH_SLEEP_MINUTES);
+    esp_sleep_enable_timer_wakeup((uint64_t)(BATCH_SLEEP_MINUTES * 60.0 * 1e6));
+    esp_deep_sleep_start();
+  } else {
+    blinkStatusSlow();
+    delay(500);
+    esp_deep_sleep_start();
   }
-  return false;
 }
-
 
 void loop() {}
 
@@ -268,7 +303,7 @@ void readSensorsToFile() {
     Serial.printf("[ERROR] Could not open file: %s\n", filename.c_str());
     return;
   }
-  file.println("timestamp_ms,accel_x,accel_y,accel_z,voltage,soc");
+  file.println("timestamp_ms,global_ms,accel_x,accel_y,accel_z,accel_mag,temp_c,voltage,soc");
   Serial.printf("Recording to %s...\n", filename.c_str());
 
   unsigned long startTime = millis();
@@ -288,14 +323,17 @@ void readSensorsToFile() {
         soc = lipo.getSOC();
       }
 #endif
-
+      float tempC = mpu.getTemperature() / 340.00 + 36.53;
       unsigned long now = millis();
-      file.printf("%lu,%d,%d,%d,%.2f,%.1f\n", now - startTime, ax, ay, az, voltage, soc);
+      uint64_t global_ms = (uint64_t)totalActiveCycles * BATCH_DURATION_MS + (now - startTime);
+      float accel_mag = sqrt(ax * ax + ay * ay + az * az);
+
+      file.printf("%lu,%llu,%d,%d,%d,%.2f,%.2f,%.2f,%.1f\n", now - startTime, global_ms, ax, ay, az, accel_mag, tempC, voltage, soc);
       nextSample += interval;
     }
   }
 
   file.close();
-  LOG_DEBUGLN("[\u2713] Recording complete.");
+  LOG_DEBUGLN("[✓] Recording complete.");
   delay(200);
 }
