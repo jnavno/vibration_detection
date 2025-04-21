@@ -7,7 +7,7 @@
 - Data is collected at 1000Hz to support vibration classification
 - Accelerometer readings include X, Y, Z axes only (no gyroscope)
 - Battery readings include voltage and SOC via MAX17048
-- Collected data is saved to CSV files: /accelN.csv (auto-incremented)
+- Collected data is saved to CSV files: /accel_sd_<session><index>.csv
 - SD card is initialized over custom software SPI pins
 - VEXT power rail is toggled ON to power sensors
 - Debugging is controlled via DEBUG_LEVEL in DebugConfiguration.h
@@ -19,15 +19,13 @@
 Purpose                     LED     Pattern               Meaning
 ---------------------------------------------------------------------
 ✅ SD card initialized      STATUS  3 short blinks        System ready to log
-🟥 SD init failed           ALERT   3 slow blinks         Error condition, system restarting
+🔴 SD init failed           ALERT   3 slow blinks         Error condition, system restarting
 🟨 Each 12s block finished  STATUS  1 very quick blink    Block saved to microSD
 ❌ Sensor not detected      ALERT   5 short blinks        Warning: sensor problem (MPU or MAX)
 ✅ Final completion         STATUS  3 slow blinks         All blocks complete
 ---------------------------------------------------------------------
 See blinkLED(), blinkStatus*, and blinkAlert* for implementation.
 */
-
-
 
 #include <Wire.h>
 #include <MPU6050.h>
@@ -48,10 +46,22 @@ SFE_MAX1704X lipo;
 #endif
 Preferences prefs;
 RTC_DATA_ATTR int bootCount = 0;
+RTC_DATA_ATTR int sessionFileIndex = 0;
 SPIClass sdSPI;
 bool max1704xPresent = false;
+String sessionID;
 
-//Modular LED Blink Utilities
+// Convert integer to session string (a, b, ..., z, aa, ab, ...)
+String getSessionString(int index) {
+  String result = "";
+  do {
+    result = char('a' + (index % 26)) + result;
+    index = index / 26 - 1;
+  } while (index >= 0);
+  return result;
+}
+
+// Modular LED Blink Utilities
 void blinkLED(int pin, int blinks, int on_ms, int off_ms) {
   for (int i = 0; i < blinks; i++) {
     digitalWrite(pin, HIGH);
@@ -67,12 +77,13 @@ void blinkStatusSlow()     { blinkLED(STATUS_LED_PIN, 3, 300, 200); }
 void blinkAlertError()     { blinkLED(ALERT_LED_PIN, 3, 300, 300); }
 void blinkAlertSensor()    { blinkLED(ALERT_LED_PIN, 5, 100, 100); }
 
-
 void powerVEXT(bool state);
 bool testMPU();
 bool testMAX();
 void readSensorsToFile();
 String getNextFilename();
+bool sdHasAccelFiles();
+
 
 void setup() {
   INIT_DEBUG_SERIAL();
@@ -81,7 +92,7 @@ void setup() {
 
   pinMode(VEXT_CTRL_PIN, OUTPUT);
   powerVEXT(true);
-  delay(200); //peripherals to stabilize
+  delay(200);
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(ALERT_LED_PIN, OUTPUT);
@@ -99,10 +110,9 @@ void setup() {
   if (!max1704xPresent) LOG_DEBUGLN("ERROR: MAX1704x NOT detected or disabled!");
   blinkAlertSensor();
 
-
   LOG_DEBUGLN("Initializing SD...");
   sdSPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
-  sdSPI.setFrequency(400000);  // Reduced for stability
+  sdSPI.setFrequency(400000);
 
   bool sd_ok = false;
   for (int attempt = 1; attempt <= 3; attempt++) {
@@ -114,7 +124,6 @@ void setup() {
     delay(500);
   }
 
-  // Show SPI pin states
   if (!sd_ok) {
     LOG_DEBUGLN("[ERROR] SD.begin() failed after retries.");
     DUMP_SD_PINS();
@@ -126,7 +135,7 @@ void setup() {
     ESP.restart();
   }
 
-  LOG_DEBUGLN("[✔] SD card initialized.");
+  LOG_DEBUGLN("[\u2713] SD card initialized.");
   LOG_DEBUG("Using SPI pins — CS="); LOG_DEBUGLN(SD_CS_PIN);
   LOG_DEBUG(", MOSI="); LOG_DEBUGLN(SD_MOSI_PIN);
   LOG_DEBUG(", MISO="); LOG_DEBUGLN(SD_MISO_PIN);
@@ -144,15 +153,43 @@ void setup() {
   blinkStatusShort();
 
   prefs.begin("accel", false);
+  if (!sdHasAccelFiles()) {
+    LOG_DEBUGLN("[Info] No accel_sd_*.csv files found — resetting sessionIndex.");
+    prefs.putInt("sessionIndex", 0);
+  }
+  int sessionIndex = prefs.getInt("sessionIndex", 0);
+  sessionID = getSessionString(sessionIndex);
+  prefs.putInt("sessionIndex", sessionIndex + 1);
+  prefs.end();
+
+  sessionFileIndex = 0;
+  LOG_DEBUG("Session ID: %s\n", sessionID.c_str());
+
   for (int i = 0; i < NUM_BLOCKS; i++) {
-    LOG_DEBUG("[✔] Recording block %d of %d\n", i + 1, NUM_BLOCKS);
+    LOG_DEBUG("[\u2713] Recording block %d of %d\n", i + 1, NUM_BLOCKS);
     readSensorsToFile();
-    blinkStatusQuick(); // blink after each block recorded
+    blinkStatusQuick();
     delay(200);
   }
 
-  blinkStatusSlow(); // final success pattern
+  blinkStatusSlow();
 }
+
+bool sdHasAccelFiles() {
+  File root = SD.open("/");
+  while (true) {
+    File entry = root.openNextFile();
+    if (!entry) break;
+
+    String name = entry.name();
+    entry.close();
+    if (name.startsWith("/accel_sd_") && name.endsWith(".csv")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 void loop() {}
 
@@ -166,16 +203,13 @@ bool testMPU() {
 }
 
 bool testMAX() {
-  #ifdef USE_MAX1704X
+#ifdef USE_MAX1704X
   LOG_DEBUGLN("Initializing MAX17048...");
   if (!lipo.begin()) {
     LOG_DEBUGLN("[MAX1704x] begin() failed — sensor not detected.");
     return false;
   }
-
-  delay(200); // Settle I2C
-
-  // Read version register
+  delay(200);
   Wire.beginTransmission(0x36);
   Wire.write(0x08);
   Wire.endTransmission(false);
@@ -183,7 +217,6 @@ bool testMAX() {
   uint16_t version = (Wire.read() << 8) | Wire.read();
   LOG_DEBUG("[MAX1704x] Version: 0x%04X\n", version);
 
-  // Read CONFIG to check sleep bit
   Wire.beginTransmission(0x36);
   Wire.write(0x0C);
   Wire.endTransmission(false);
@@ -192,7 +225,6 @@ bool testMAX() {
   bool sleeping = config & (1 << 7);
   LOG_DEBUG("[MAX1704x] CONFIG: 0x%04X — Sleeping: %s\n", config, sleeping ? "Yes" : "No");
 
-  // Send reset command
   Wire.beginTransmission(0x36);
   Wire.write(0xFE);
   Wire.write(0x00);
@@ -200,33 +232,28 @@ bool testMAX() {
   Wire.endTransmission();
   LOG_DEBUGLN("[MAX1704x] Reset command sent.");
 
-  delay(1000); // Let it reboot
-
+  delay(1000);
   if (!lipo.begin()) {
     LOG_DEBUGLN("[MAX1704x] Re-init after reset failed.");
     return false;
   }
 
   LOG_DEBUGLN("[MAX1704x] Monitoring initial SOC...");
-  //necessary to settle the coloumb count and make sure the readings are accurate
   for (int i = 0; i < 5; i++) {
     float voltage = lipo.getVoltage();
     float soc = lipo.getSOC();
     LOG_DEBUG("[MAX1704x] Voltage: %.2f V, SOC: %.2f %%\n", voltage, soc);
     delay(1000);
   }
-
   return true;
-  #else
+#else
   return false;
-  #endif
+#endif
 }
 
 String getNextFilename() {
-  int count = prefs.getInt("fileCount", 0);
-  count++;
-  prefs.putInt("fileCount", count);
-  return "/accel" + String(count) + ".csv";
+  sessionFileIndex++;
+  return "/accel_sd_" + sessionID + String(sessionFileIndex) + ".csv";
 }
 
 void readSensorsToFile() {
@@ -236,7 +263,6 @@ void readSensorsToFile() {
     Serial.printf("[ERROR] Could not open file: %s\n", filename.c_str());
     return;
   }
-
   file.println("timestamp_ms,accel_x,accel_y,accel_z,voltage,soc");
   Serial.printf("Recording to %s...\n", filename.c_str());
 
@@ -250,13 +276,13 @@ void readSensorsToFile() {
       mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
       float voltage = -1.0f;
-      float soc = -1.0f;;
-      #ifdef USE_MAX1704X
-        if (max1704xPresent) {
-          voltage = lipo.getVoltage();
-          soc = lipo.getSOC();
-        }
-        #endif
+      float soc = -1.0f;
+#ifdef USE_MAX1704X
+      if (max1704xPresent) {
+        voltage = lipo.getVoltage();
+        soc = lipo.getSOC();
+      }
+#endif
 
       unsigned long now = millis();
       file.printf("%lu,%d,%d,%d,%.2f,%.1f\n", now - startTime, ax, ay, az, voltage, soc);
@@ -265,6 +291,6 @@ void readSensorsToFile() {
   }
 
   file.close();
-  LOG_DEBUGLN("[✔] Recording complete.");
+  LOG_DEBUGLN("[\u2713] Recording complete.");
   delay(200);
 }
