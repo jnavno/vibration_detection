@@ -4,7 +4,7 @@
 
 - Records multiple 12-second blocks of accelerometer and battery data to microSD
 - Number of blocks is configurable via NUM_BLOCKS
-- Data is collected at 1000Hz to support vibration classification
+- Data is collected at 333Hz to support vibration classification
 - Accelerometer readings include X, Y, Z axes only (no gyroscope)
 - Battery readings include voltage and SOC via MAX17048
 - Collected data is saved to CSV files: /accel_sd_<session><index>.csv

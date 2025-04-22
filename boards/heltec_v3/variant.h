@@ -52,7 +52,7 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define VIBRATION_THRESHOLD 0.5  // Threshold for increasing sampling rate
 
 // SD logger file ONLY
-#define PASSIVE_MODE true
+#define PASSIVE_MODE false
 #define STATE_FILENAME "/log_state.txt"
 #define BATCH_DURATION_MS (BLOCKS_PER_BATCH * SAMPLING_DURATION_ACCEL * 1000 + 200 * BLOCKS_PER_BATCH)
 #define SIMULATED_BATCH_SECONDS 1200  // 20 min sleep + ~5 min active = ~25 min total
