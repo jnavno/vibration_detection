@@ -1,0 +1,15 @@
+*CONDITIONS:
+1. place sensor vertically 
+2. place sensor always above the vibration source, i.e. cutting happens at ground level (person) and the sensor will always be installed above that
+3. always run on battery to perform tests. Cable creates damping.
+
+TEST RUNS:
+- 5 min no vibration
+
+- 5 min 70cm distance from chainsaw vibration
+- 5 min 2000cm distance from chainsaw vibration
+- 5 min 300cm distance from chainsaw vibration
+
+- 5 min 70cm distance from machete strikes
+- 5 min 2000cm distance from machete strikes
+- 5 min 300cm distance from machete strikes
