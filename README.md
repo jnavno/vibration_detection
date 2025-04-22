@@ -111,13 +111,13 @@ framework = arduino
 
 2. **Software Configuration**: Define threshold values and sampling duration in the code.
 
-3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the prototype onto the tree with a rigid enclosure, such as PVC, so that vibrations in the trunk will move through the casing into the accelerometer. Finally, the sw420 operates best when soldered to the pcb at an oblique angle.
+3. **Deployment**: Rigidity and weight of the enclosure matter. You'll need to hardcode the exact weight of your enclosure. Also, install the device vertically onto the tree with a rigid enclosure, such as PVC, so that vibrations in the trunk will move through the casing into the accelerometer. Finally, the sw420 operates best when soldered to the pcb at a horizontal angle.
 
 4. **Operation**: When awake, the system continuously samples accelerometer data for a period of 60 seconds. If shaking surpasses predefined parameters, an alarm is activated. If no threats are found, the system goes into deep sleep. The ALARM led is used to manually calibrate (screw) the physical intensity at which the device will wake up. Crucial for field installation. When u are 8m up in the tree, you want to REALLY make sure that strikes to the trunk are noticed by the device!! The RUN led indicate the device is ON and it is disabled shortly after to conserve battery.
 
-5. **Analysis**: Logged data to the SPIFFS memory is used to identify vibration patterns thru FFT analysis, and it will categorize which tools are being used, i.e. machete, hand saw or chainsaw. Useful for post analysis in certain scenarios.
+5. **Analysis**: Logged data to the LittleFs memory is used to identify vibration patterns thru FFT and wavelet analysis, and it will categorize which tools are being used, i.e. machete or chainsaw and it will discriminate from amient vibration. Useful .py clasifiers available for post analysis in certain scenarios.
 
-6. **Battery Life**: The device is expected to last without charging for **@ 4 years**. Each time the system wakes up, it will send a message with the battery level for re-charge planning. The following is an arbitrary calculation in normal operation conditions.
+6. **Battery Life**: Designed for multi-year operation. A MAX1704X fuel gauge reports voltage and state-of-charge (SOC), included in each logged CSV for power monitoring and maintenance scheduling.
 
 ---
 

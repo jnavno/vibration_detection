@@ -318,7 +318,6 @@ void readSensorsToFile() {
   for (int i = 0; i < numSamples; i++) {
     unsigned long t0 = micros();
 
-    // Read sensors
     int16_t ax, ay, az, gx, gy, gz;
     mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
@@ -339,14 +338,12 @@ void readSensorsToFile() {
     unsigned long t1 = micros();
     unsigned long loop_us = t1 - t0;
 
-    // Write line
     file.printf("%lu,%llu,%d,%d,%d,%.2f,%.2f,%.2f,%.1f,%lu\n",
                 now - sessionStart, global_ms,
                 ax, ay, az, accel_mag, tempC, voltage, soc, loop_us);
 
-    // Schedule next exact timestamp
     targetMicros += sampleIntervalUs;
-    while (micros() < targetMicros);  // Busy wait until next target
+    while (micros() < targetMicros);
   }
 
   file.close();
