@@ -303,34 +303,50 @@ void readSensorsToFile() {
     Serial.printf("[ERROR] Could not open file: %s\n", filename.c_str());
     return;
   }
-  file.println("timestamp_ms,global_ms,accel_x,accel_y,accel_z,accel_mag,temp_c,voltage,soc");
+
+  file.println("timestamp_ms,global_ms,accel_x,accel_y,accel_z,accel_mag,temp_c,voltage,soc,loop_us");
   Serial.printf("Recording to %s...\n", filename.c_str());
 
-  unsigned long startTime = millis();
-  unsigned long interval = 1000 / SAMPLE_RATE_ACCEL_HZ;
-  unsigned long nextSample = startTime;
+  const int fs = 333;
+  const int duration = 12;
+  const int numSamples = fs * duration;
 
-  while (millis() - startTime < SAMPLING_DURATION_ACCEL * 1000) {
-    if (millis() >= nextSample) {
-      int16_t ax, ay, az, gx, gy, gz;
-      mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  unsigned long sessionStart = millis();
+  unsigned long sampleIntervalUs = 1000000 / fs;  // 3003 µs
+  unsigned long targetMicros = micros();
 
-      float voltage = -1.0f;
-      float soc = -1.0f;
-#ifdef USE_MAX1704X
-      if (max1704xPresent) {
-        voltage = lipo.getVoltage();
-        soc = lipo.getSOC();
-      }
-#endif
-      float tempC = mpu.getTemperature() / 340.00 + 36.53;
-      unsigned long now = millis();
-      uint64_t global_ms = (uint64_t)totalActiveCycles * BATCH_DURATION_MS + (now - startTime);
-      float accel_mag = sqrt(ax * ax + ay * ay + az * az);
+  for (int i = 0; i < numSamples; i++) {
+    unsigned long t0 = micros();
 
-      file.printf("%lu,%llu,%d,%d,%d,%.2f,%.2f,%.2f,%.1f\n", now - startTime, global_ms, ax, ay, az, accel_mag, tempC, voltage, soc);
-      nextSample += interval;
+    // Read sensors
+    int16_t ax, ay, az, gx, gy, gz;
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    float voltage = -1.0f;
+    float soc = -1.0f;
+  #ifdef USE_MAX1704X
+    if (max1704xPresent) {
+      voltage = lipo.getVoltage();
+      soc = lipo.getSOC();
     }
+  #endif
+
+    float tempC = mpu.getTemperature() / 340.00 + 36.53;
+    float accel_mag = sqrt(ax * ax + ay * ay + az * az);
+    unsigned long now = millis();
+    uint64_t global_ms = (uint64_t)totalActiveCycles * BATCH_DURATION_MS + (now - sessionStart);
+
+    unsigned long t1 = micros();
+    unsigned long loop_us = t1 - t0;
+
+    // Write line
+    file.printf("%lu,%llu,%d,%d,%d,%.2f,%.2f,%.2f,%.1f,%lu\n",
+                now - sessionStart, global_ms,
+                ax, ay, az, accel_mag, tempC, voltage, soc, loop_us);
+
+    // Schedule next exact timestamp
+    targetMicros += sampleIntervalUs;
+    while (micros() < targetMicros);  // Busy wait until next target
   }
 
   file.close();
