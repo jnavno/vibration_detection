@@ -120,6 +120,16 @@ framework = arduino
 6. **Battery Life**: Designed for multi-year operation. A MAX1704X fuel gauge reports voltage and state-of-charge (SOC), included in each logged CSV for power monitoring and maintenance scheduling.
 
 ---
+### Real-World Vibration Data
+
+This project includes real sensor data collected from field deployments.
+
+- All raw `.csv` recordings are organized by event type in the `data/` folder.
+- Corresponding PDF plots are saved alongside each recording.
+- These files are kept lightweight (<100MB total) and serve as documented evidence of sensor validation and classifier development.
+
+No need for external downloads or setup — all key materials are available directly in this repo.
+
 
 ### Battery Life Calculations (Example Scenario)
 

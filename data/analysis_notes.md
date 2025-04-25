@@ -4,6 +4,7 @@ version: 1.1
 author: Pep Navarro / UVERD ltd
 last_updated: 2025-04-24
 linked_data: /data
+colab notebook: https://colab.research.google.com/drive/1DWP2NGFHoYyxrpiyTw46pv7zPegXE_I-#scrollTo=ACheh23KPJBc&uniqifier=1
 ---
 
 ## Objective
@@ -64,13 +65,44 @@ Use chainsaw patterns as a benchmark to distinguish other events like machete or
 
 ---
 
+## Real-World Field Data
+
+This folder contains real vibration logs collected from the TreeGuard sensor.
+
+### Folder Structure
+
+| Folder Name             | Vibration Source | Distance from Sensor | Duration | Notes             |
+|-------------------------|------------------|----------------------|----------|-------------------|
+| `ambient_noise/`        | None             | N/A                  | 5 min    | Ambient noise     |
+| `chain_short/`          | Chainsaw         | 70 cm                | 5 min    | Short distance    |
+| `chain_med/`            | Chainsaw         | 200 cm               | 5 min    | Medium distance   |
+| `chain_far/`            | Chainsaw         | 300 cm               | 5 min    | Far distance      |
+| `mac_short/`            | Machete          | 70 cm                | 5 min    | Short distance    |
+| `mac_med/`              | Machete          | 200 cm               | 5 min    | Medium distance   |
+| `mac_far/`              | Machete          | 300 cm               | 5 min    | Far distance      |
+
+Each folder contains:
+- Raw CSV logs (`accel_sd_<session><index>.csv`)
+- Corresponding visualizations (`_plotted.pdf`)
+  - Magnitude of X, Y, Z
+  - FFT spectrum
+  - Axis-specific plots
+
+
+### Field Setup
+- Sensor mounted around 4 - 6 m above ground on native tree trunk
+- Enclosure: PVC rigid tube with no foam inner lining or any vibration damping material
+- Tools used: gas chainsaw, machete, ambient conditions (wind,rain,etc)
+
+---
+
 ## Test Checklist
 
 - [ ] Sensor is mounted vertically  
 - [ ] Sensor is installed **above** the source of vibration  
 - [ ] Device is powered by battery (no USB connected)  
 - [ ] Temperature and total magnitude data are included in each recording  
-- [ ] Classifier outputs are recorded for each test in MicroSD 
+- [ ] Classifier outputs are recorded for each test in the MicroSD
 - [ ] Plots and subband energy breakdowns are saved for review in /data folder 
 
 ---

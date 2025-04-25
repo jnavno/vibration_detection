@@ -52,7 +52,7 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define VIBRATION_THRESHOLD 0.5  // Threshold for increasing sampling rate
 
 // SD logger file ONLY
-#define PASSIVE_MODE true             // PASSIVE_MODE = ture --> 20min sleep + 5min recordings (until 24h ELAPSED)
+#define PASSIVE_MODE false             // PASSIVE_MODE = ture --> 20min sleep + 5min recordings (until 24h ELAPSED)
                                       // PASSIVE_MODE = false --> 5min recordings + permanent sleep
 #define STATE_FILENAME "/log_state.txt"
 #define BATCH_DURATION_MS (BLOCKS_PER_BATCH * SAMPLING_DURATION_ACCEL * 1000 + 200 * BLOCKS_PER_BATCH)

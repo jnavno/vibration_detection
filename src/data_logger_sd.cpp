@@ -225,6 +225,7 @@ void setup() {
     esp_sleep_enable_timer_wakeup((uint64_t)(BATCH_SLEEP_MINUTES * 60.0 * 1e6));
     esp_deep_sleep_start();
   } else {
+    LOG_DEBUGLN("🟡 Recording complete. Entering permanent deep sleep.");
     blinkStatusSlow();
     delay(500);
     esp_deep_sleep_start();
