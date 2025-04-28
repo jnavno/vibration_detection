@@ -37,6 +37,9 @@ Use chainsaw patterns as a benchmark to distinguish other events like machete or
 
 ## Workflow
 
+> **Note:** The following steps are supported by Python scripts described in the [Scripts Used for Analysis](#scripts-used-for-analysis) section.
+
+
 1. Select 5 random `.csv` files from the designated dataset folder.
 2. For each file:
    - Plot the time-domain signal for all three axes (X, Y, Z).
@@ -48,6 +51,7 @@ Use chainsaw patterns as a benchmark to distinguish other events like machete or
 3. Summarize classification accuracy and mismatches.
 4. Add observations or anomalies to the analysis notes.
 
+The following Python scripts support the analysis workflow described below.
 ---
 
 ## Data Collection Conditions
@@ -64,6 +68,42 @@ Use chainsaw patterns as a benchmark to distinguish other events like machete or
   - 📈 Total acceleration magnitude
 
 ---
+
+## Visual facts Observable from plotted graphs
+
+
+
+| Tool            | Visual Trait      | Frequency Domain      | Time Domain  |
+|-----------------|-------------------|----------------------|------------|
+| Machete         | Few sharp spikes    | High energy in D1+D2 (wavelet)    | Sparse, strong peaks    |
+| Chainsaw        | Dense buzzing        | High energy between 150–250 Hz     | Dense oscillation |
+| Ambient noise   | Flat/noisy        | Low energy all around   | no structure    |
+
+## Scripts Used for Analysis
+
+Below is a summary of the Python scripts used throughout the vibration data collection and analysis process. Each script focuses on a different phase, from initial visualization to feature extraction and classification validation.
+
+| Script Name                  | Purpose |
+|-------------------------------|---------|
+| `batch_plot_vibrations.py`    | Processes all `.csv` files in a selected folder and generates a `_plotted.pdf` for each file. Each PDF includes: (1) combined vibration magnitude, (2) FFT spectrum, and (3) individual X, Y, Z axis plots. Useful for quick visual inspection of new data batches. |
+| `build_feature_dataset.py`    | Extracts features such as high-frequency energy ratios (D1, D2), low-frequency energy (D3–D5), dominant FFT frequency, and peak counts from labeled datasets (machete, chainsaw, ambient). Saves the compiled features into a single `vibration_profile.csv` file to support classifier calibration and threshold tuning. |
+| `classifier_validate.py`      | Validates the classification algorithm by automatically running feature extraction and classification on all `.csv` files in the mixed test dataset. Prints detection results for each file, helping verify real-world classifier performance. |
+| `esp_data_retrieval.py`        | Connects to an ESP32 device via serial port and automatically saves incoming vibration `.csv` files to a local `results/` directory. Used during fieldwork to retrieve vibration data without manually accessing the microSD card. |
+
+Each script is located inside the `/scripts` folder of the repository. Paths inside the scripts may need manual updates to point to the correct dataset folders during operation.
+
+
+## Extraction of Visual Traits as Features
+
+- Machete
+    Short spikes, separated by ~3250 samples. Height: -2.5 to 15, usually ~10.
+    Machete shows consistently high sharp peaks > 5.
+    Y and Z nearly superimposed (high energy), X offset at higher baseline with sharp peaks.
+  
+*TODO Candidate Features for Machete detection in .md HERE
+  
+- Chainsaw
+- Ambient noise
 
 ## Real-World Field Data
 
@@ -98,7 +138,7 @@ Each folder contains:
 
 ## Test Checklist
 
-- [ ] Sensor is mounted vertically  
+- [ ] Sensor is mounted vertically, with antenna socket at the top
 - [ ] Sensor is installed **above** the source of vibration  
 - [ ] Device is powered by battery (no USB connected)  
 - [ ] Temperature and total magnitude data are included in each recording  

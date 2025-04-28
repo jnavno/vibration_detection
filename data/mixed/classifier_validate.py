@@ -1,0 +1,72 @@
+import os
+import pandas as pd
+import numpy as np
+import pywt
+from scipy.fft import fft, fftfreq
+from pathlib import Path
+import random
+
+# === CONFIG ===
+fs = 333
+duration = 12
+num_samples = fs * duration
+wavelet = 'db4'
+level = 5
+
+# === Set folder with mixed data ===
+folder_to_classify = Path("/home/anda/Documents/repositories/iot_projects/vibration_detection/data/mixed")
+
+def extract_features(filepath):
+    df = pd.read_csv(filepath)
+    signal = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+    signal = (signal - np.mean(signal)) / np.std(signal)
+    signal = signal[:num_samples]
+
+    # FFT
+    yf = fft(signal)
+    xf = fftfreq(len(signal), 1 / fs)
+    fft_magnitude = np.abs(yf[:len(signal)//2])
+    dominant_freq = xf[np.argmax(fft_magnitude)]
+
+    # Wavelet
+    coeffs = pywt.wavedec(signal, wavelet, level=level)
+    energies = [np.sum(np.square(c)) for c in coeffs[1:]]
+    total_energy = sum(energies)
+    d1 = coeffs[1]
+
+    d1_ratio = energies[4] / total_energy
+    d2_ratio = energies[3] / total_energy
+    d3_d5_ratio = sum(energies[0:3]) / total_energy
+
+    peak_count = np.sum(np.abs(d1) > 0.2 * max(np.abs(d1)))
+
+    return d1_ratio, d2_ratio, d3_d5_ratio, dominant_freq, peak_count
+
+def classify(d1_ratio, d2_ratio, d3_d5_ratio, dominant_freq, peak_count, filename=None):
+    total_high_freq_energy = d1_ratio + d2_ratio
+
+    if filename:
+        print(f"\n🔍 {filename}:")
+        print(f"    - d1+d2 energy: {total_high_freq_energy:.2f}")
+        print(f"    - d3–d5 energy: {d3_d5_ratio:.2f}")
+        print(f"    - dominant_freq: {dominant_freq:.2f} Hz")
+        print(f"    - peak_count: {peak_count}")
+
+    if 10 <= peak_count <= 30 and total_high_freq_energy > 0.6 and dominant_freq < 10:
+        return "✅ Likely Machete"
+    elif peak_count > 40 and total_high_freq_energy > 0.6 and 60 < dominant_freq < 120:
+        return "🔧 Likely Chainsaw"
+    elif peak_count < 10 and dominant_freq < 10 and d3_d5_ratio > 0.5:
+        return "🌬️ Likely Ambient"
+    else:
+        return "⚠️ Unclassified"
+
+# === Run classification ===
+all_files = list(folder_to_classify.glob("*.csv"))
+random.shuffle(all_files)
+
+print("🔎 Classifying vibration logs:\n")
+for filepath in all_files:
+    d1, d2, d3_d5, freq, peaks = extract_features(filepath)
+    result = classify(d1, d2, d3_d5, freq, peaks, filename=filepath.name)
+    print(f"{filepath.name:30} --> {result}")

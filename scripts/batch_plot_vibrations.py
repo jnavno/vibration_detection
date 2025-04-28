@@ -9,11 +9,11 @@ a `_plotted.pdf` file for each. Each PDF contains three pages:
 Usage:
 -------
 1. Copy this script into any folder that contains `.csv` vibration data files.
-2. Update the folder_path variable to match the folder you are on.
+2. Update the folder_path variable (below) to match the folder you are in.
 3. Open a terminal and navigate into that folder.
 4. Run the script using:
 
-   python3 batch_plot_vibrations_current_dir.py
+   python3 batch_plot_vibrations.py
 
 Requirements:
 --------------
@@ -36,7 +36,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 # === CONFIGURATION ===
 fs = 333
 duration = 12
-folder_path = "/home/anda/MEGA/UVERD/hardware/Design Files/_Ecominga_/_TreeGuard_/Docs/vibration_detection_data/no_vibra_5min"
+folder_path = "/home/anda/Documents/repositories/iot_projects/vibration_detection/data/mac_short"
 
 
 # === PROCESS EACH CSV FILE IN THE FOLDER ===
