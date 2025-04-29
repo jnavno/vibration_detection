@@ -10,7 +10,38 @@
 - INT from EXT_0 is disabled during operation
 - INT re-enabled before entering deep sleep
 
+============================================================
+🛠️ Developer Quick Checklist (Before Flashing)
+------------------------------------------------------------
+- Verify correct GPIO assignments in `variant.h`:
+    - VEXT_CTRL_PIN (sensor power)
+    - SDA_PIN, SCL_PIN (I2C)
+    - INTERRUPT_PIN (wake trigger)
+- Ensure a battery is connected to the hat's BAT socket, for VEXT power
+- Confirm Serial Monitor baud rate is set to 115200
+- Confirm PlatformIO `.ini` board matches ESP32S3/Heltec V3 hardware
+- Confirm BLE is disabled automatically (saves power)
+
+============================================================
+🚀 How to Flash + Monitor
+------------------------------------------------------------
+1. Connect device via USB
+2. Flash firmware:
+    PlatformIO:   `platformio run -t upload`
+    Arduino IDE:  Upload as usual
+3. Open Serial Monitor at 115200 baud:
+    PlatformIO:   `platformio device monitor -b 115200`
+    Arduino IDE:  Tools > Serial Monitor
+4. Confirm:
+    - Sensor initialization prints to console
+    - JSON-formatted sensor readings appear
+    - Status LED blinks 3x after reading
+    - Device enters deep sleep
+5. To re-test: press reset button or trigger EXT_0 INT.
+
+============================================================
 */
+
 
 #include <Wire.h>
 #include <MPU6050.h>   
@@ -38,6 +69,8 @@ void readSensorData();
 
 void setup() {
     INIT_DEBUG_SERIAL();
+    LOG_DEBUG("========== SENSOR TEST ==========");
+
     LOG_DEBUGLN("Booting...");
 
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
@@ -224,6 +257,8 @@ bool testMAX() {
         LOG_DEBUGLN("ERROR: MAX17048 NOT detected!");
         return false;
     }
+    lipo.quickStart(); // Force chip to reset SoC calculation
+    delay(200);
 
     LOG_DEBUGLN("MAX17048 initialized successfully.");
     return true;
