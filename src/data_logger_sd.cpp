@@ -39,6 +39,7 @@ Purpose                     LED     Pattern               Meaning
 #include <SD.h>
 #include <SPI.h>
 
+#define FILE_PREFIX "non_event_far"  // Change this before recording different datasets
 MPU6050 mpu;
 #ifdef USE_MAX1704X
 SFE_MAX1704X lipo;
@@ -117,7 +118,7 @@ bool sdHasAccelFiles() {
     if (!entry) break;
     String name = entry.name();
     entry.close();
-    if (name.startsWith("accel_sd_") && name.endsWith(".csv")) return true;
+    if (name.startsWith(String(FILE_PREFIX) + "_sd_") && name.endsWith(".csv")) return true;
   }
   return false;
 }
@@ -294,7 +295,7 @@ bool testMAX() {
 
 String getNextFilename() {
   sessionFileIndex++;
-  return "/accel_sd_" + sessionID + String(sessionFileIndex) + ".csv";
+  return "/" + String(FILE_PREFIX) + "_sd_" + sessionID + String(sessionFileIndex) + ".csv";
 }
 
 void readSensorsToFile() {

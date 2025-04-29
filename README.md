@@ -159,7 +159,15 @@ No need for external downloads or setup — all key materials are available dire
   8000 mAh / 5.072 mAh/day ≈ **1572.5 days** (~ **4.3 years**)
 
 ---
+### Project Planning Board
 
+A Kanban board is maintained in Notion to track current tasks, future improvements, and project milestones.
+
+👉 [View the Project Kanban Board](https://www.notion.so/faea23728bbe4831a94d347c6d43ae3f?v=d44b70571f2c48f1ad454ab5613dc24b&pvs=4)
+
+*Note: Board access may require permission depending on project phase.*
+
+---
 
 #### License
 This project is released under the [MIT License](LICENSE.md).

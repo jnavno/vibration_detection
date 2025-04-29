@@ -88,14 +88,22 @@ def classify(d1_ratio, d2_ratio, d3_d5_ratio, dominant_freq, peak_count, filenam
         print(f"    - dominant_freq: {dominant_freq:.2f} Hz")
         print(f"    - peak_count: {peak_count}")
 
-    if 10 <= peak_count <= 30 and total_high_freq_energy > 0.6 and dominant_freq < 10:
+    # --- TUNED CONDITIONS ---
+    # Machete detection
+    if 10 <= peak_count <= 35 and total_high_freq_energy > 0.55 and dominant_freq < 15:
         return "✅ Likely Machete"
-    elif peak_count > 40 and total_high_freq_energy > 0.6 and 60 < dominant_freq < 120:
+    # Chainsaw detection
+    elif peak_count >= 30 and total_high_freq_energy > 0.6 and 50 <= dominant_freq <= 130:
         return "🔧 Likely Chainsaw"
-    elif peak_count < 10 and dominant_freq < 10 and d3_d5_ratio > 0.5:
+    # Ambient detection
+    elif peak_count < 10 and d3_d5_ratio > 0.5 and dominant_freq < 10:
         return "🌬️ Likely Ambient"
+    # Non-event filter (dominant freq too low for chainsaw)
+    elif total_high_freq_energy > 0.6 and dominant_freq < 30:
+        return "⚠️ Possibly Non-Event (low freq)"
     else:
         return "⚠️ Unclassified"
+
 
 # === Run classification ===
 all_files = list(folder_to_classify.glob("*.csv"))
