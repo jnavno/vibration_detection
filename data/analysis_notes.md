@@ -1,109 +1,159 @@
 ---
 title: Data Analysis for Vibration Detection Algorithm
-version: 1.1
+version: 1.2
 author: Pep Navarro / UVERD ltd
-last_updated: 2025-04-24
+last_updated: 2025-05-02
 linked_data: /data
 colab notebook: https://colab.research.google.com/drive/1DWP2NGFHoYyxrpiyTw46pv7zPegXE_I-#scrollTo=ACheh23KPJBc&uniqifier=1
 ---
 
 ## Objective
 
-To validate and calibrate the vibration classification algorithm by comparing simulated outputs with controlled real-world vibration data.
+To validate, refine, and prepare for embedded integration a vibration classification algorithm capable of accurately identifying chainsaw, machete, and non-event ambient activity using signals from a tree-mounted ESP32 sensor.
 
 ---
 
 ## Scenario Under Test
 
-**Chainsaw && Machete cutting at 70, 2000 and 3000 cm from the sensor for 5 minutes**
+**Chainsaw && Machete cutting at 70, 2000 and 3000 cm from the sensor for 5 minutes**, across varied environmental and structural conditions.
 
 ---
 
 ## Evaluation Criteria
 
 ###  Ground Truth Validation
-Confirm whether the classifier matches real-world vibration patterns.
+Cross-check machine classification against filename labels derived from structured field logging.
 
 ###  Baseline Calibration
-Fine-tune thresholds and band energy parameters using known, noisy data.
+Tune thresholds and extract high-resolution features across wavelet subbands and FFT windows.
 
 ###  Event Shape Matching
-Ensure frequency patterns (e.g., machete = D3–D4 peaks) apply to real wood strikes.
+Ensure frequency and temporal domain markers (e.g., machete spikes, chainsaw density) correlate with classifier outputs.
 
 ###  Comparative Analysis
-Use chainsaw patterns as a benchmark to distinguish other events like machete or wind.
+Use chainsaw traces as benchmark. Separate overlapping high-frequency classes (e.g., wind) with multidimensional filtering.
+
+###  Model Robustness
+Perform cross-validation and multi-model comparisons (RF, SVM, kNN) with PCA-based visualizations and confusion matrices.
 
 ---
 
 ## Workflow
 
-> **Note:** The following steps are supported by Python scripts described in the [Scripts Used for Analysis](#scripts-used-for-analysis) section.
+1. Use real-world data files from `/mixed` folder (cleaned of outliers).
+2. Extract 13 signal features including:
+   - DWT energy ratios: D1, D2, D3–D5
+   - FFT energy in 0–25 Hz and 125–200 Hz
+   - Peak count, strike count
+   - Axis offsets and max amplitude
+3. Automatically infer **true labels** from filenames (`mac_`, `chain_`, `non_event_`).
+4. Train and evaluate multiple classifiers (Random Forest, SVM, kNN).
+5. Apply PCA for feature-space visualization and decision boundary inspection.
+6. Perform stratified train/test split and k-fold cross-validation.
+7. Rank feature importance by model.
 
-
-1. Select 5 random `.csv` files from the designated dataset folder.
-2. For each file:
-   - Plot the time-domain signal for all three axes (X, Y, Z).
-   - Perform Discrete Wavelet Transform (DWT) up to level 5 using `db4`.
-   - Compute energy in D1 to D5 subbands.
-   - Normalize and analyze energy distribution.
-   - Apply classifier logic to infer vibration source.
-   - Record classifier output alongside known event label (e.g., "Chainsaw").
-3. Summarize classification accuracy and mismatches.
-4. Add observations or anomalies to the analysis notes.
-
-The following Python scripts support the analysis workflow described below.
 ---
 
-## Data Collection Conditions
+## Real-World Field Data Conditions
 
-- Sensor orientation: **Vertical**, aligned to X-axis  
-  - ⚠️ Y and Z signals are nearly superimposed  
-  - ➕ Suggest trying **horizontal placement**
-
-- Power supply: **Battery only**  
-  - ⚠️ USB cable introduces mechanical damping
-
-- New variables now logged:
+- **Sensor Orientation:** Vertical (X dominant)
+  - ⚠️ Y and Z nearly overlapping → Y and Z contain little differential info
+  - ➕ Horizontal placement is suggested for future tests
+- **Power Source:** Battery only
+  - ⚠️ USB cable reduces vibration fidelity
+- **New Variables Captured:**
   - 🌡️ Temperature
-  - 📈 Total acceleration magnitude
+  - 📈 Total magnitude (XYZ combined)
 
 ---
 
-## Visual facts Observable from plotted graphs
+## Model Performance Summary
+
+### Random Forest Classifier
+
+- **Train Accuracy:** 100%
+- **Test Accuracy:** ~95%
+- **Cross-Validation:** Mean accuracy ≈ 94.6% ± 2.2%
+- **Confusion Matrix:**
+  All three classes (chainsaw, machete, ambient) perfectly separated in final train/test split
+
+### Support Vector Machine (RBF Kernel)
+
+- Accuracy: 91–93%
+- Notably accurate for clean boundaries but **misclassifies sparse machete signals near chainsaw zones**
+
+### k-Nearest Neighbors (k=5)
+
+- Accuracy: ~90%
+- More sensitive to boundary jitter and noisy samples
+
+---
+
+## Feature Importance
+
+Top contributors to classification according to Random Forest:
+
+| Rank | Feature           | Impact            |
+|------|-------------------|--------------------|
+| 1    | strike_count       | Most powerful discriminator, esp. for machete |
+| 2–4  | max_x, max_y, max_z | Reflects physical power of the event |
+| 5    | fft_0_25_ratio     | Key for ambient rejection |
+| 6    | d3_d5_ratio         | Used for machete vs chainsaw |
+| 7–9  | peak_count, d1_ratio, high_freq_energy | All subtle but additive |
+
+*Offset values showed low contribution and may be deprecated unless sensor orientation changes.*
+
+---
+
+## Visual Traits Summary
+
+| Tool          | Time Domain       | Frequency Domain            | Observed Traits                      |
+|---------------|------------------|-----------------------------|--------------------------------------|
+| Machete       | Sparse high spikes | High in D1+D2, low elsewhere | ~3200-sample interval strike bursts  |
+| Chainsaw      | Dense vibration   | Wideband 150–250 Hz peak     | High energy clusters                 |
+| Ambient Noise | Flat / noisy      | Energy ~0 everywhere         | Low entropy                          |
+
+---
+
+## Key Visualizations
+
+- 📊 **Feature Importance Bar Chart (RF + Logistic Regression)**
+- 🧭 **PCA Scatter Plot of All 3 Classes**
+- 🧱 **Confusion Matrices (RF vs SVM)**
+- 🗺️ **Decision Boundaries: RF, SVM, kNN**
+
+> These visuals confirm *clear separability* across classes, especially when projected to 2D via PCA.
+
+---
+
+## Embedded Integration Plan
+
+The feature extraction pipeline has been tested and validated in Python. Moving forward:
+
+1. Convert Python logic to embedded C++:
+   - **Strike count**, **max amplitudes**, and **band ratios** will be derived from onboard signal streams
+   - Use **threshold rules** and **lookup logic** in place of ML trees if memory-limited
+2. Ensure extraction runs on 333Hz sensor sampling and under 12-second collection windows.
+3. Only the top ~6 features may be embedded to save compute power.
+4. Model weights or thresholds can be exported as constants or tables into firmware files.
+
+---
+
+## Scripts Used
+
+| Script | Purpose |
+|--------|---------|
+| `extract_features_for_training.py` | Parses `.csv`, runs wavelet + FFT + axis analytics, infers true labels |
+| `random_forest_eval.py`            | Loads labeled dataset, trains/test RF, shows accuracy + importance |
+| `svm_knn_eval.py`                  | Runs SVM and kNN models, plots PCA decision boundaries |
+| `batch_plot_vibrations.py`        | PDF generation for time/FFT plots |
+| `esp_data_retrieval.py`           | Copies `.csv` from ESP32 unit to `results/` |
+| `classifier_validate.py`          | Older rule-based classifier script for comparison purposes |
+
+---
 
 
 
-| Tool            | Visual Trait      | Frequency Domain      | Time Domain  |
-|-----------------|-------------------|----------------------|------------|
-| Machete         | Few sharp spikes    | High energy in D1+D2 (wavelet)    | Sparse, strong peaks    |
-| Chainsaw        | Dense buzzing        | High energy between 150–250 Hz     | Dense oscillation |
-| Ambient noise   | Flat/noisy        | Low energy all around   | no structure    |
-
-## Scripts Used for Analysis
-
-Below is a summary of the Python scripts used throughout the vibration data collection and analysis process. Each script focuses on a different phase, from initial visualization to feature extraction and classification validation.
-
-| Script Name                  | Purpose |
-|-------------------------------|---------|
-| `batch_plot_vibrations.py`    | Processes all `.csv` files in a selected folder and generates a `_plotted.pdf` for each file. Each PDF includes: (1) combined vibration magnitude, (2) FFT spectrum, and (3) individual X, Y, Z axis plots. Useful for quick visual inspection of new data batches. |
-| `build_feature_dataset.py`    | Extracts features such as high-frequency energy ratios (D1, D2), low-frequency energy (D3–D5), dominant FFT frequency, and peak counts from labeled datasets (machete, chainsaw, ambient). Saves the compiled features into a single `vibration_profile.csv` file to support classifier calibration and threshold tuning. |
-| `classifier_validate.py`      | Validates the classification algorithm by automatically running feature extraction and classification on all `.csv` files in the mixed test dataset. Prints detection results for each file, helping verify real-world classifier performance. |
-| `esp_data_retrieval.py`        | Connects to an ESP32 device via serial port and automatically saves incoming vibration `.csv` files to a local `results/` directory. Used during fieldwork to retrieve vibration data without manually accessing the microSD card. |
-
-Each script is located inside the `/scripts` folder of the repository. Paths inside the scripts may need manual updates to point to the correct dataset folders during operation.
-
-
-## Extraction of Visual Traits as Features
-
-- Machete
-    Short spikes, separated by ~3250 samples. Height: -2.5 to 15, usually ~10.
-    Machete shows consistently high sharp peaks > 5.
-    Y and Z nearly superimposed (high energy), X offset at higher baseline with sharp peaks.
-  
-*TODO Candidate Features for Machete detection in .md HERE
-  
-- Chainsaw
-- Ambient noise
 
 ## Real-World Field Data
 
@@ -176,7 +226,8 @@ Each folder contains:
 
 ## Change Log
 
-| Version | Date       | Description                                |
-|---------|------------|--------------------------------------------|
-| 1.0     | 2025-04-23 | Initial draft                              |
+| Version | Date       | Description |
+|---------|------------|-------------|
+| 1.0     | 2025-04-23 | Initial draft |
 | 1.1     | 2025-04-24 | Structured doc, added checklist/test table |
+| 1.2     | 2025-05-02 | Full ML model evaluation, PCA, visualizations, embedded plan |

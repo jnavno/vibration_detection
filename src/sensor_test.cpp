@@ -149,6 +149,7 @@ void disableWakeInterrupt() {
 
 void enableWakeInterrupt() {
     LOG_DEBUGLN("Re-arming INT for next wake-up...");
+        LOG_DEBUG("INTERRUPT_PIN = "); LOG_DEBUGLN(INTERRUPT_PIN);
     pinMode(INTERRUPT_PIN, INPUT_PULLDOWN);
 
     esp_err_t errI = esp_sleep_enable_ext0_wakeup(INTERRUPT_PIN, 1);
@@ -202,7 +203,7 @@ void enterDeepSleep() {
     LOG_DEBUGLN("Entering deep sleep...");
     delay(100);
     Serial.flush();
-    delay(50);
+    delay(200);
 
     esp_deep_sleep_start();
 }
