@@ -39,7 +39,7 @@ Purpose                     LED     Pattern               Meaning
 #include <SD.h>
 #include <SPI.h>
 
-#define FILE_PREFIX "non_event_far"  // Change this before recording different datasets
+#define FILE_PREFIX "chain_far_new"  // Change this before recording different datasets
 MPU6050 mpu;
 #ifdef USE_MAX1704X
 SFE_MAX1704X lipo;
@@ -190,6 +190,11 @@ void setup() {
     indexFile.close();
   }
 
+  // 👉 ADDED: Load sessionFileIndex from non-volatile storage
+  prefs.begin("datalogger", false);
+  sessionFileIndex = prefs.getInt("fileIndex", 0);
+  prefs.end();
+
   if (PASSIVE_MODE) {
     uint64_t elapsed = totalActiveCycles * SIMULATED_BATCH_SECONDS;
     uint64_t maxSeconds = TOTAL_LOGGING_HOURS * 3600.0;
@@ -208,7 +213,6 @@ void setup() {
     LOG_DEBUG("Passive Mode - Batch %d\n", totalActiveCycles + 1);
   }
 
-  sessionFileIndex = 0;
   LOG_DEBUG("Session ID: %s\n", sessionID.c_str());
 
   int blocksToRun = PASSIVE_MODE ? BLOCKS_PER_BATCH : NUM_BLOCKS;
@@ -295,6 +299,10 @@ bool testMAX() {
 
 String getNextFilename() {
   sessionFileIndex++;
+  // Saves updated index to non-volatile storage
+  prefs.begin("datalogger", false);
+  prefs.putInt("fileIndex", sessionFileIndex);
+  prefs.end();
   return "/" + String(FILE_PREFIX) + "_sd_" + sessionID + String(sessionFileIndex) + ".csv";
 }
 
