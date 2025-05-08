@@ -1,0 +1,8 @@
+{
+    "sampling_rate_hz": 333,
+    "recording_duration_s": 12,
+    "classification_enabled": true,
+    "log_format": "csv",
+    "debug_mode": true
+  }
+  
