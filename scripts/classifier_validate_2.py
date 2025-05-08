@@ -1,37 +1,18 @@
 """
-Description:
--------------
-This script classifies `.csv` vibration log files in a given folder into one of
-three categories: Likely Machete, Likely Chainsaw, or Likely Ambient. It uses
-wavelet decomposition and FFT analysis to extract key features from the signal.
+Updated classifier_validate.py
 
-Each file's classification result is printed to the terminal.
+This script classifies fresh vibration CSV logs into: Likely Machete, Likely Chainsaw, Likely Non-Event, 
+Ambiguous, or Unclassified. It extracts key features from accelerometer signals using wavelet and FFT analysis.
 
-Usage:
--------
-1. Update the 'folder_to_classify' variable to point to the folder with `.csv` files.
-2. Open a terminal and navigate into the project directory.
-3. Run the script using:
-
-   python3 classifier_validate.py
-
-Requirements:
---------------
-- Python 3
+Dependencies:
 - pandas
 - numpy
 - pywt
 - scipy
 
-Notes:
-------
-- Files are classified based on:
-    - High-frequency wavelet energy ratios (D1+D2 vs D3–D5).
-    - Dominant frequency from FFT.
-    - Peak count from high-frequency detail coefficients.
-- This script is intended for validation and tuning of offline classification
-  before embedded deployment.
-
+Usage:
+1. Place CSVs in the folder specified by 'folder_to_classify'.
+2. Run with: python3 classifier_validate_2.py
 """
 import os
 import pandas as pd
@@ -126,8 +107,9 @@ def classify(features):
     band_125_200 = features['fft_125_200_ratio']
     max_x, max_y, max_z = features['max_x'], features['max_y'], features['max_z']
     offset_x_y, offset_y_z = features['offset_x_y'], features['offset_y_z']
+    peak_count = features['peak_count']
 
-    # ✅ Machete
+    # ✅ Stage 1: Strict Machete Rule
     if (
         1 <= strike_count <= 100 and
         hf_energy >= 0.4 and
@@ -141,7 +123,7 @@ def classify(features):
 
     # 🔧 Chainsaw
     elif (
-        features['peak_count'] > 30 and
+        peak_count > 30 and
         strike_count > 200 and
         hf_energy > 0.6 and
         band_0_25 < 0.3 and
@@ -150,7 +132,7 @@ def classify(features):
     ):
         return "🔧 Likely Chainsaw"
 
-    # 🌬️ Non-Event (refined)
+    # 🌬️ Non-Event
     elif (
         max_y < 2000 and
         max_z < 2000 and
@@ -161,7 +143,28 @@ def classify(features):
     ):
         return "🌬️ Likely Non-Event"
 
-    # ⚠️ Vibration Detected (ambiguous)
+    # 🟡 Stage 2: Loose Fallback for Machete (revised)
+    elif (
+        70 <= strike_count <= 110 and
+        hf_energy > 0.45 and
+        band_0_25 >= 0.22 and
+        band_125_200 < 0.27 and
+        offset_x_y >= 15300 and
+        abs(offset_y_z) <= 1300 and
+        (max_y > 15000 or max_z > 15000)
+    ):
+        return "🟡 Possibly Machete"
+
+    # ⚠️ Edge case: Possibly Chainsaw (low activity or pause)
+    elif (
+        band_125_200 > 0.28 and
+        hf_energy > 0.75 and
+        strike_count < 300 and
+        max_y > 10000 and max_z > 10000
+    ):
+        return "⚠️ Possibly Chainsaw (Low Activity)"
+
+    # ⚠️ General Ambiguous Vibration
     elif (
         hf_energy > 0.5 and
         strike_count > 20 and
@@ -169,8 +172,8 @@ def classify(features):
     ):
         return "⚠️ Vibration Detected (ambiguous)"
 
-    # ⚠️ Fully Unclassified
     return "⚠️ Unclassified"
+
 
 
 # === MAIN ===

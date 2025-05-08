@@ -1,6 +1,9 @@
 TODO:
 
 URGENT:
+- Verify new data with the newly created LM model
+- Implement C++ code from LM python model
+- Verify C++ code compute capability on the esp32
 - Implement data_logger_sd onto device    DONE
 - update sensor_test.cpp to collect data at SAMPLE_RATE_ACCEL_HZ 1000 DONE
 - Assembl of the datalogger version of the sensor to take to Spain   DONE
