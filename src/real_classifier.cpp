@@ -18,8 +18,10 @@
 #include <DebugConfiguration.h>
 #include "variant.h"
 
+#define TEST_MODE  // Comment this out to disable test mode
+
 #define uS_TO_S_FACTOR 1000000ULL
-#define TIME_TO_SLEEP  86400  // 24h sleep fallback
+#define TIME_TO_SLEEP  86400  // 24h sleep fallback or 259200 (72h)
 #define CLASSIFICATION_FILE "/classification_log.txt"
 #define USE_PLACEHOLDER_LOGIC
 
@@ -29,6 +31,13 @@ SFE_MAX1704X lipo;
 #endif
 bool max1704xPresent = false;
 
+float accelX_buffer[ACCEL_NUM_SAMPLES];
+float accelY_buffer[ACCEL_NUM_SAMPLES];
+float accelZ_buffer[ACCEL_NUM_SAMPLES];
+
+void initSensors();
+void runTestMode();
+void printTestBufferFile(int maxLines = 50);
 void powerVEXT(bool state);
 bool testMPU();
 bool testMAX();
@@ -46,6 +55,52 @@ void setup() {
     Serial.print("Wakeup cause: ");
     Serial.println((int)wakeup_reason);
 
+    initSensors();
+
+    if (!LittleFS.begin(true)) {
+        LOG_DEBUGLN("[ERROR] LittleFS mount failed!");
+    } else {
+        LOG_DEBUGLN("[✓] LittleFS mounted.");
+        #ifdef TEST_MODE
+            File file = LittleFS.open(CLASSIFICATION_FILE, FILE_READ);
+            if (file) {
+                Serial.println("--- Classification Log ---");
+                while (file.available()) Serial.write(file.read());
+                file.close();
+                Serial.println("--------------------------");
+            }
+        #endif
+    }
+
+    #ifdef TEST_MODE
+        LOG_DEBUGLN("TEST_MODE is active: capturing full buffer...");
+        runTestMode();
+        printTestBufferFile();
+        LOG_DEBUGLN("System entering test halt (while loop)...");
+        while (true) delay(1000);
+
+    #else
+        switch (wakeup_reason) {
+            case ESP_SLEEP_WAKEUP_EXT0:
+                classifyAndStore();
+                break;
+            case ESP_SLEEP_WAKEUP_TIMER:
+                statusOnlyMode();
+                break;
+            default:
+                LOG_DEBUGLN("[WARN] Unknown wake reason. Defaulting to statusOnlyMode.");
+                statusOnlyMode();
+                break;
+        }
+        delay(500);
+        enterDeepSleep();
+    #endif
+}
+
+
+void loop() {}
+
+void initSensors() {
     pinMode(VEXT_CTRL_PIN, OUTPUT);
     powerVEXT(true);
     delay(200);
@@ -59,26 +114,77 @@ void setup() {
 
     max1704xPresent = testMAX();
     if (!max1704xPresent) LOG_DEBUGLN("[WARNING] MAX1704x NOT detected.");
-
-    if (!LittleFS.begin(true)) {
-        LOG_DEBUGLN("[ERROR] LittleFS mount failed!");
-    } else {
-        LOG_DEBUGLN("[✓] LittleFS mounted.");
-        File file = LittleFS.open(CLASSIFICATION_FILE, FILE_READ);
-        if (file) {
-            Serial.println("--- Classification Log ---");
-            while (file.available()) Serial.write(file.read());
-            file.close();
-            Serial.println("--------------------------");
-        }
-    }
-
-    classifyAndStore();
-    delay(500);
-    enterDeepSleep();
 }
 
-void loop() {}
+void printTestBufferFile(int maxLines) {
+    File file = LittleFS.open("/test_buffer.csv", FILE_READ);
+    if (!file) {
+        Serial.println("[ERROR] Could not open /test_buffer.csv");
+        return;
+    }
+
+    Serial.printf("--- Showing first %d lines of /test_buffer.csv ---\n", maxLines);
+
+    int lineCount = 0;
+    String line;
+    while (file.available() && lineCount < maxLines) {
+        line = file.readStringUntil('\n');
+        Serial.println(line);
+        lineCount++;
+    }
+
+    if (file.available()) {
+        Serial.println("[...output truncated]");
+    }
+
+    file.close();
+    Serial.printf("[✓] Done printing %d lines.\n", lineCount);
+}
+
+
+void runTestMode() {
+    const unsigned long sampleIntervalUs = 1000000UL / ACCEL_SAMPLE_RATE_HZ;
+    unsigned long targetMicros = micros();
+
+    for (int i = 0; i < ACCEL_NUM_SAMPLES; i++) {
+        int16_t ax, ay, az, gx, gy, gz;
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+        accelX_buffer[i] = ax;
+        accelY_buffer[i] = ay;
+        accelZ_buffer[i] = az;
+
+        targetMicros += sampleIntervalUs;
+        while (micros() < targetMicros);  // Wait precise interval
+    }
+
+    LOG_DEBUGLN("[✓] Buffer capture complete.");
+
+    if (!LittleFS.begin(true)) {
+        LOG_DEBUGLN("[ERROR] LittleFS mount failed in test mode.");
+        return;
+    }
+
+    File f = LittleFS.open("/test_buffer.csv", FILE_WRITE);
+    if (!f) {
+        LOG_DEBUGLN("[ERROR] Failed to open /test_buffer.csv");
+        return;
+    }
+
+    f.println("index,ax,ay,az,temp_c,voltage,soc");
+    for (int i = 0; i < ACCEL_NUM_SAMPLES; i++) {
+        float tempC = mpu.getTemperature() / 340.00 + 36.53;
+        float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
+        float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
+
+        f.printf("%d,%.0f,%.0f,%.0f,%.2f,%.2f,%.1f\n",
+                 i, accelX_buffer[i], accelY_buffer[i], accelZ_buffer[i], tempC, voltage, soc);
+    }
+
+    f.close();
+    LOG_DEBUGLN("[✓] Full accelerometer buffer saved to /test_buffer.csv");
+}
+
 
 void powerVEXT(bool state) {
     digitalWrite(VEXT_CTRL_PIN, state ? LOW : HIGH);
@@ -214,6 +320,30 @@ bool testMAX() {
         } else {
             LOG_DEBUGLN("[ERROR] Could not write to LittleFS.");
         }
+    }
+
+    void statusOnlyMode() {
+        LOG_DEBUGLN("[MODE] statusOnlyMode()");
+
+        float tempC = mpu.getTemperature() / 340.00 + 36.53;
+        float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
+        float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
+
+        Serial.printf("[Status Report] T=%.2f °C, V=%.2f V, SOC=%.1f %%\n", tempC, voltage, soc);
+
+        #ifdef TEST_MODE
+            File f = LittleFS.open("/status_log.txt", FILE_APPEND);
+            if (f) {
+                f.printf("%lu,%.2f,%.2f,%.1f\n", millis(), tempC, voltage, soc);
+                f.close();
+                LOG_DEBUGLN("[✓] Status snapshot stored to /status_log.txt");
+            } else {
+                LOG_DEBUGLN("[ERROR] Could not write to status_log.txt");
+            }
+        #endif
+
+        delay(500);
+        enterDeepSleep();
     }
 
 void enterDeepSleep() {

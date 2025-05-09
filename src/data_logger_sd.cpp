@@ -317,9 +317,9 @@ void readSensorsToFile() {
   file.println("timestamp_ms,global_ms,accel_x,accel_y,accel_z,accel_mag,temp_c,voltage,soc,loop_us");
   Serial.printf("Recording to %s...\n", filename.c_str());
 
-  const int fs = 333;
-  const int duration = 12;
-  const int numSamples = fs * duration;
+  const int fs = ACCEL_SAMPLE_RATE_HZ;
+  const int duration = ACCEL_DURATION_SECONDS;
+  const int numSamples = ACCEL_NUM_SAMPLES;
 
   unsigned long sessionStart = millis();
   unsigned long sampleIntervalUs = 1000000 / fs;  // 3003 µs

@@ -24,12 +24,22 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define DEFAULT_SAMPLE_RATE 20  // Low-power mode default
 
 // Sampling Duration & Buffer Size
-#define SAMPLING_DURATION 60  // 60 seconds of monitoring
-#define SAMPLING_DURATION_ACCEL 12  // time block readings in secods
-#define SAMPLE_RATE_ACCEL_HZ 333 // real sampling rate
-#define MAX_BUFFER_SIZE 4000  // Maximum buffer allocation
-#define BLOCK_SIZE 128  // Define BLOCK_SIZE for FIFO buffer handling
-#define NUM_BLOCKS 25 // Number of consecutive 12s blocks to record (data_logger_sd.cpp)
+// ==== ACCELEROMETER SAMPLING CONFIG ====
+#ifndef ACCEL_SAMPLE_RATE_HZ
+  #define ACCEL_SAMPLE_RATE_HZ 333
+#endif
+
+#ifndef ACCEL_DURATION_SECONDS
+  #define ACCEL_DURATION_SECONDS 12
+#endif
+
+#define ACCEL_NUM_SAMPLES (ACCEL_SAMPLE_RATE_HZ * ACCEL_DURATION_SECONDS)
+
+#ifndef NUM_BLOCKS
+  #define NUM_BLOCKS 25  // Total blocks per session (12s each)
+#endif
+// ~5 minutes active logging per session: NUM_BLOCKS × ACCEL_DURATION_SECONDS
+
 
 // Vibration Detection Thresholds and Frequencies
 #ifndef MPU6050_DEFAULT_ADDRESS
