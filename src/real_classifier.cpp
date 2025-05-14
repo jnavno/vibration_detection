@@ -18,8 +18,6 @@
 #include <DebugConfiguration.h>
 #include "variant.h"
 
-#define TEST_MODE  // Comment this out to disable test mode
-
 #define uS_TO_S_FACTOR 1000000ULL
 #define TIME_TO_SLEEP  86400  // 24h sleep fallback or 259200 (72h)
 #define CLASSIFICATION_FILE "/classification_log.txt"
@@ -46,6 +44,8 @@ void enableWakeInterrupt();
 void disableWakeInterrupt();
 void enterDeepSleep();
 void classifyAndStore();
+void statusOnlyMode();
+
 
 void setup() {
     INIT_DEBUG_SERIAL();
@@ -61,7 +61,7 @@ void setup() {
         LOG_DEBUGLN("[ERROR] LittleFS mount failed!");
     } else {
         LOG_DEBUGLN("[✓] LittleFS mounted.");
-        #ifdef TEST_MODE
+        #if ACTIVE_MODE == TEST_MODE
             File file = LittleFS.open(CLASSIFICATION_FILE, FILE_READ);
             if (file) {
                 Serial.println("--- Classification Log ---");
@@ -72,14 +72,14 @@ void setup() {
         #endif
     }
 
-    #ifdef TEST_MODE
+    #if ACTIVE_MODE == TEST_MODE
         LOG_DEBUGLN("TEST_MODE is active: capturing full buffer...");
         runTestMode();
         printTestBufferFile();
         LOG_DEBUGLN("System entering test halt (while loop)...");
         while (true) delay(1000);
 
-    #else
+    #elif ACTIVE_MODE == OPERATION_MODE
         switch (wakeup_reason) {
             case ESP_SLEEP_WAKEUP_EXT0:
                 classifyAndStore();

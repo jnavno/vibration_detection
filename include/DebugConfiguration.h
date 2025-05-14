@@ -55,3 +55,14 @@
 #else
     #define LOG_FEATURE_TOGGLE()  // No-op when debugging is off
 #endif
+
+// ==============================
+// 🔹 SYSTEM MODE SELECTION
+// ==============================
+
+#define TEST_MODE         0
+#define OPERATION_MODE    1
+
+// Set this to TEST_MODE or OPERATION_MODE before compiling
+
+#define ACTIVE_MODE       OPERATION_MODE

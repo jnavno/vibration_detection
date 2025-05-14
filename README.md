@@ -21,6 +21,17 @@ This project implements wavelet-based vibration analysis to classify specific ev
 
 ### Basic Flow
 
+🎯 GOAL
+When the device wakes up for real, it should:
+
+Collect ~12 seconds of vibration data (in memory, not saved to file).
+
+Analyze that full block of data using FFT or ML logic (not 1 sample).
+
+Save the classification result (like “Likely Machete”) to a log file.
+
+Go back to sleep.
+
     Interrupt wakes up the device. The interrupt is disabled.
     Accelerometer and battery gauge are powered on.
     System reads data stream,
@@ -32,6 +43,88 @@ This project implements wavelet-based vibration analysis to classify specific ev
     System enters deep sleep mode.
 
 ---
+
+## 🌙 Wake-Up Behavior
+
+The device operates in low-power mode using **deep sleep**, and only wakes up when necessary. There are two wake-up paths:
+
+---
+
+### 🟠 EXT0 Wake-up (Vibration Interrupt)
+
+- **Trigger:** A rising signal (e.g., from a mechanical switch or vibration sensor) on GPIO7.
+- **Used for:** Detecting possible logging activity (machete, chainsaw, etc.).
+
+**Behavior:**
+- Initializes the motion sensor and battery monitor
+- Collects ~12 seconds of accelerometer data
+- Classifies the vibration type (using FFT or machine learning logic)
+- Logs the classification result to the internal file system (`LittleFS`)
+- Returns to deep sleep
+
+---
+
+### 🔵 TIMER Wake-up (Status Check)
+
+- **Trigger:** Internal timer (default: once every 24 or 72 hours).
+- **Used for:** Periodic system health check.
+
+**Behavior:**
+- Initializes the sensors
+- Reads battery voltage, state of charge (SOC), and temperature
+- Logs a status snapshot to `status_log.txt`
+- Returns to deep sleep
+
+---
+
+### ⚙️ Operating Modes
+
+The device supports two compile-time selectable modes:
+
+| Mode           | Purpose                          | How to enable                  |
+|----------------|----------------------------------|--------------------------------|
+| `TEST_MODE`    | Capture and print test buffer    | `#define ACTIVE_MODE TEST_MODE` |
+| `OPERATION_MODE` | Normal classification and sleep | `#define ACTIVE_MODE OPERATION_MODE` |
+
+To switch modes, edit `DebugConfiguration.h` and change:
+
+```cpp
+#define ACTIVE_MODE TEST_MODE        // ← for development
+// or
+#define ACTIVE_MODE OPERATION_MODE  // ← for deployment
+
+                      ┌────────────────────┐
+                      │ Device Wakes Up    │
+                      └────────┬───────────┘
+                               │
+             ┌────────────────┴────────────┐
+             │                             │
+  Wakeup Cause: EXT0 (INT)      Wakeup Cause: TIMER (fallback)
+             │                             │
+             ▼                             ▼
+ ┌────────────────────┐          ┌────────────────────────┐
+ │  Initialize Sensors │          │  Initialize Sensors    │
+ └─────────┬──────────┘          └──────────┬─────────────┘
+           │                                │
+           ▼                                ▼
+ ┌────────────────────────┐      ┌────────────────────────────┐
+ │ Collect 12s Vibration  │      │  Read Temp/Voltage/SOC     │
+ │   (e.g., 333Hz)        │      └──────────┬─────────────────┘
+ └─────────┬──────────────┘                 │
+           ▼                                ▼
+ ┌────────────────────────┐      ┌────────────────────────────┐
+ │ Classify Buffered Data │      │  Save to status_log.txt     │
+ └─────────┬──────────────┘      └────────────────────────────┘
+           ▼
+ ┌────────────────────────┐
+ │ Save result to LittleFS│
+ │  (classification_log) │
+ └─────────┬──────────────┘
+           ▼
+   ┌────────────────────┐
+   │ Enter Deep Sleep   │
+   └────────────────────┘
+
 
 ### Components
 - **[Heltec V3](https://heltec.org/project/wifi-lora-32-v3/)** | **[ESP32-S3](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/hw-reference/esp32s3/user-guide-devkitc-1.html)**: Manages system operations, sensor interfacing, and data logging.

@@ -33,39 +33,38 @@ ON ARRIVAL TO ECUADOR (until 15th May)
 
 NICE TO HAVE: 
 - Update README file
-
 # TODO – Real-Time Classifier Roadmap (Next Steps)
 
 ## 🛠️ Current State
 
-- **File**: `real_classifier.cpp`
-- **Purpose**: Test wake-up cycles, I2C initialization, MPU6050 readings, MAX1704x integration, and basic LittleFS logging.
-- **Status**: Functional, deep sleep works, LittleFS works, MAX1704x optional/missing, classification placeholder logic active.
+* **File**: `real_classifier.cpp`
+* **Purpose**: Test wake-up cycles, I2C initialization, MPU6050 readings, MAX1704x integration, and basic LittleFS logging.
+* **Status**: Functional, deep sleep works, LittleFS works, MAX1704x optional/missing, classification placeholder logic active.
 
 ## 🔍 Missing Features (to be added next)
 
-| Requirement                          | Status          | Notes |
-|--------------------------------------|-----------------|-------|
-| Buffering ~12 seconds of data        | ❌ Not present   | Add RAM buffer for accelerometer X/Y/Z |
-| Sampling at fixed rate (e.g., 333Hz) | ❌ Not implemented | Use microsecond pacing loop |
-| Store full buffer before processing  | ❌ Only 1 sample | Save all readings to LittleFS or use for live classification |
-| In-memory FFT/wavelet classification | 🔜 To be added   | Use existing Python logic as reference |
+| Requirement                          | Status                           | Notes                                  |
+| ------------------------------------ | -------------------------------- | -------------------------------------- |
+| Buffering \~12 seconds of data       | ✅ Implemented in TEST\_MODE      | X/Y/Z buffers are collected and saved  |
+| Sampling at fixed rate (e.g., 333Hz) | ✅ Working in test mode           | Uses microsecond pacing loop           |
+| Store full buffer before processing  | ✅ Captured and saved to LittleFS | via `/test_buffer.csv`                 |
+| In-memory FFT/wavelet classification | 🔜 To be added                   | Use existing Python logic as reference |
 
 ## ✅ Near-Term Goals
 
-1. Scaffold `collectBlockOfData()` to fill X/Y/Z buffers over ~12 seconds.
-2. Store the buffered result in LittleFS (`/raw_session_<n>.csv`).
-3. (Optional) Start porting energy band / FFT logic from Python → C++.
-4. Replace placeholder classification with buffered classification.
+1. Scaffold `collectBlockOfData()` for production path (non-TEST\_MODE).
+2. Replace placeholder classification with buffered FFT/wavelet-based logic.
+3. Implement classification message formatting for TreeShake protobuf.
+4. Integrate classification summary into LoRa messaging logic.
 
 ## 🧪 Testing Plan
 
-- [ ] Validate 12s buffered acquisition at 333Hz.
-- [ ] Log CSV file to LittleFS from RAM.
-- [ ] Confirm file integrity post-reset via serial dump.
-- [ ] Leave room for enabling classification on buffered data.
+* [x] Validate 12s buffered acquisition at 333Hz in `TEST_MODE`.
+* [x] Log CSV file to LittleFS and confirm format.
+* [ ] Test production buffering + classification under EXT0 wake.
+* [ ] Ensure proper fallback behavior on timer wake.
+* [ ] Confirm clean deep sleep transitions.
 
 ---
 
-📅 _Next coding session: Start by implementing `collectBlockOfData()` and buffering architecture._
-
+📅 *Next coding session: Start by integrating buffered classification logic into `classifyAndStore()`.*
