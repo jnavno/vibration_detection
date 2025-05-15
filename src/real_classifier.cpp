@@ -16,6 +16,7 @@
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
 #include <DebugConfiguration.h>
+#include "classifier.h"
 #include "variant.h"
 
 #define uS_TO_S_FACTOR 1000000ULL
@@ -345,6 +346,62 @@ bool testMAX() {
         delay(500);
         enterDeepSleep();
     }
+
+    void collectBlockOfData() {
+    const unsigned long sampleIntervalUs = 1000000UL / ACCEL_SAMPLE_RATE_HZ;
+    unsigned long targetMicros = micros();
+
+    for (int i = 0; i < ACCEL_NUM_SAMPLES; i++) {
+        int16_t ax, ay, az, gx, gy, gz;
+        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+        accelX_buffer[i] = ax;
+        accelY_buffer[i] = ay;
+        accelZ_buffer[i] = az;
+
+        targetMicros += sampleIntervalUs;
+        while (micros() < targetMicros);  // precise timing
+    }
+
+    LOG_DEBUGLN("[✓] Buffer filled with new data");
+}
+
+// String classifyBufferedData() {
+//     float maxAccelMag = 0.0;
+//     float avgAy = 0.0;
+//     float avgAz = 0.0;
+
+//     for (int i = 0; i < ACCEL_NUM_SAMPLES; i++) {
+//         float mag = sqrt(
+//             accelX_buffer[i] * accelX_buffer[i] +
+//             accelY_buffer[i] * accelY_buffer[i] +
+//             accelZ_buffer[i] * accelZ_buffer[i]
+//         );
+
+//         if (mag > maxAccelMag) maxAccelMag = mag;
+//         avgAy += accelY_buffer[i];
+//         avgAz += accelZ_buffer[i];
+//     }
+
+//     avgAy /= ACCEL_NUM_SAMPLES;
+//     avgAz /= ACCEL_NUM_SAMPLES;
+//     // TODO: Add FFT or ML logic here using accelX/Y/Z_buffer[]
+//     String result = "⚠️ Unclassified";
+
+// #ifdef USE_PLACEHOLDER_LOGIC
+//     if (maxAccelMag > 25000 && avgAy > 15000 && avgAz > 15000) {
+//         result = "✅ Likely Machete";
+//     } else if (maxAccelMag > 15000) {
+//         result = "🔧 Possibly Chainsaw";
+//     }
+// #endif
+
+//     return result;
+// }
+
+String result = classifyBufferedData(accelX_buffer, accelY_buffer, accelZ_buffer, ACCEL_NUM_SAMPLES);
+
+
 
 void enterDeepSleep() {
     LOG_DEBUGLN("Preparing for deep sleep...");
