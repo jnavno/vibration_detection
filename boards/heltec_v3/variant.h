@@ -40,6 +40,11 @@ extern int SAMPLES;  // Dynamically updated sample size
 #endif
 // ~5 minutes active logging per session: NUM_BLOCKS × ACCEL_DURATION_SECONDS
 
+// Filepaths
+#define SPIFFS_FILE "/data.csv"
+#define CLASSIFICATION_FILE "/classification_log.txt"
+#define STATUS_FILE "/status_log.txt"
+#define STATE_FILENAME "/log_state.txt"
 
 // Vibration Detection Thresholds and Frequencies
 #ifndef MPU6050_DEFAULT_ADDRESS
@@ -61,12 +66,12 @@ extern int SAMPLES;  // Dynamically updated sample size
 #define MONITOR_DURATION 60000  // 60 seconds
 #define VIBRATION_THRESHOLD 0.5  // Threshold for increasing sampling rate
 
-// SD logger file ONLY
-#define PASSIVE_MODE false             // PASSIVE_MODE = ture --> 20min sleep + 5min recordings (until 24h ELAPSED)
-                                      // PASSIVE_MODE = false --> 5min recordings + permanent sleep
-#define STATE_FILENAME "/log_state.txt"
-#define BATCH_DURATION_MS (BLOCKS_PER_BATCH * SAMPLING_DURATION_ACCEL * 1000 + 200 * BLOCKS_PER_BATCH)
-#define SIMULATED_BATCH_SECONDS 1200  // 20 min sleep + ~5 min active = ~25 min total
-#define TOTAL_LOGGING_HOURS 24.0      // Full 24 hours of logging
-#define BLOCKS_PER_BATCH 25           // ~5 minutes worth of blocks
-#define BATCH_SLEEP_MINUTES 20.0      // Sleep 20 minutes between batches
+// SD logger specific
+#ifdef ENABLE_SD_LOGGER
+  #define BLOCKS_PER_BATCH 25 // ~5 minutes worth of blocks
+  #define PASSIVE_MODE false  // true: log for 24h (5min logging + 20min sleep loops), false: log once for 5min then sleep permanently
+  #define BATCH_SLEEP_MINUTES 20.0  // Sleep 20 minutes between batches
+  #define TOTAL_LOGGING_HOURS 24.0  // Full 24 hours of logging
+  #define SIMULATED_BATCH_SECONDS 1200  // 20 min sleep + ~5 min active = ~25 min total
+  #define BATCH_DURATION_MS (BLOCKS_PER_BATCH * ACCEL_DURATION_SECONDS * 1000 + 200 * BLOCKS_PER_BATCH)
+#endif

@@ -6,7 +6,7 @@ This document outlines how to test and validate the firmware running on the Helt
 
 ---
 
-## ✅ Modes of Operation
+## Modes of Operation
 
 ### 1. `TEST_MODE`
 
@@ -39,7 +39,7 @@ This document outlines how to test and validate the firmware running on the Helt
 
 ---
 
-## ✅ Wake Source Routing
+## Wake Source Routing
 
 The firmware distinguishes wake-up causes using ESP32's native method:
 
@@ -57,7 +57,7 @@ And dispatches accordingly:
 
 ---
 
-## ⚙️ Deep Sleep Configuration
+## Deep Sleep Configuration
 
 Each sleep cycle re-arms the following wake sources:
 
@@ -71,7 +71,7 @@ esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
 
 ---
 
-## 🗃️ File Logging Behavior
+## File Logging Behavior
 
 | File Name                 | Used In              | Mode        | Notes                          |
 | ------------------------- | -------------------- | ----------- | ------------------------------ |
@@ -83,7 +83,7 @@ esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
 
 ---
 
-## 🧪 Flashing & Testing
+## Flashing & Testing
 
 1. Set `#define TEST_MODE` in `real_classifier.cpp`
 2. Build and flash to Heltec V3 via PlatformIO
@@ -97,7 +97,7 @@ esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
 
 ---
 
-## 🔜 Next Steps (Planned)
+## Next Steps (Planned)
 
 * Add `TEST_SLEEP_CYCLE` mode for testing deep sleep loops
 * Send T/V/S and classification via `TreeShakeModule` and protobuf messages

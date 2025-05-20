@@ -22,7 +22,6 @@
 #define uS_TO_S_FACTOR 1000000ULL
 #define TIME_TO_SLEEP  86400  // 24h sleep fallback or 259200 (72h)
 #define CLASSIFICATION_FILE "/classification_log.txt"
-#define USE_PLACEHOLDER_LOGIC
 
 MPU6050 mpu;
 #ifdef USE_MAX1704X
@@ -46,7 +45,7 @@ void disableWakeInterrupt();
 void enterDeepSleep();
 void classifyAndStore();
 void statusOnlyMode();
-
+void collectBlockOfData();
 
 void setup() {
     INIT_DEBUG_SERIAL();
@@ -98,7 +97,6 @@ void setup() {
     #endif
 }
 
-
 void loop() {}
 
 void initSensors() {
@@ -142,7 +140,6 @@ void printTestBufferFile(int maxLines) {
     Serial.printf("[✓] Done printing %d lines.\n", lineCount);
 }
 
-
 void runTestMode() {
     const unsigned long sampleIntervalUs = 1000000UL / ACCEL_SAMPLE_RATE_HZ;
     unsigned long targetMicros = micros();
@@ -185,7 +182,6 @@ void runTestMode() {
     f.close();
     LOG_DEBUGLN("[✓] Full accelerometer buffer saved to /test_buffer.csv");
 }
-
 
 void powerVEXT(bool state) {
     digitalWrite(VEXT_CTRL_PIN, state ? LOW : HIGH);
@@ -290,62 +286,55 @@ bool testMAX() {
       return false;
     #endif
     }
-    void classifyAndStore() {
-        LOG_DEBUGLN("[INFO] Reading sensors and classifying...");
-    
-        int16_t ax, ay, az, gx, gy, gz;
-        mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    
-        float accel_mag = sqrt(ax * ax + ay * ay + az * az);
-        float tempC = mpu.getTemperature() / 340.00 + 36.53;
-        float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
-        float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
-    
-        String result = "⚠️ Unclassified";
-    #ifdef USE_PLACEHOLDER_LOGIC
-        if (accel_mag > 25000 && ay > 15000 && az > 15000) {
-            result = "✅ Likely Machete";
-        } else if (accel_mag > 15000 && soc > 20.0f) {
-            result = "🔧 Possibly Chainsaw";
+
+void classifyAndStore() {
+    LOG_DEBUGLN("[INFO] Reading sensors and classifying...");
+
+    collectBlockOfData();  // Using full buffered data
+
+    String result = classifyBufferedData(
+        accelX_buffer, accelY_buffer, accelZ_buffer, ACCEL_NUM_SAMPLES
+    );
+
+    float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
+    float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
+
+    Serial.printf("Classification: %s\n", result.c_str());
+
+    File file = LittleFS.open(CLASSIFICATION_FILE, FILE_APPEND);
+    if (file) {
+        file.printf("%lu,%.2f,%.2f,%s\n",
+            millis(), voltage, soc, result.c_str());
+        file.close();
+        LOG_DEBUGLN("[✓] Result stored in LittleFS.");
+    } else {
+        LOG_DEBUGLN("[ERROR] Could not write to LittleFS.");
+    }
+}
+
+void statusOnlyMode() {
+    LOG_DEBUGLN("[MODE] statusOnlyMode()");
+
+    float tempC = mpu.getTemperature() / 340.00 + 36.53;
+    float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
+    float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
+
+    Serial.printf("[Status Report] T=%.2f °C, V=%.2f V, SOC=%.1f %%\n", tempC, voltage, soc);
+
+    #if ACTIVE_MODE == TEST_MODE
+        File f = LittleFS.open("/status_log.txt", FILE_APPEND);
+        if (f) {
+            f.printf("%lu,%.2f,%.2f,%.1f\n", millis(), tempC, voltage, soc);
+            f.close();
+            LOG_DEBUGLN("[✓] Status snapshot stored to /status_log.txt");
+        } else {
+            LOG_DEBUGLN("[ERROR] Could not write to status_log.txt");
         }
     #endif
-    
-        Serial.printf("Classification: %s\n", result.c_str());
-    
-        File file = LittleFS.open(CLASSIFICATION_FILE, FILE_APPEND);
-        if (file) {
-            file.printf("%lu,%d,%d,%d,%.2f,%.2f,%.2f,%s\n",
-                        millis(), ax, ay, az, accel_mag, voltage, soc, result.c_str());
-            file.close();
-            LOG_DEBUGLN("[✓] Result stored in LittleFS.");
-        } else {
-            LOG_DEBUGLN("[ERROR] Could not write to LittleFS.");
-        }
-    }
 
-    void statusOnlyMode() {
-        LOG_DEBUGLN("[MODE] statusOnlyMode()");
-
-        float tempC = mpu.getTemperature() / 340.00 + 36.53;
-        float voltage = max1704xPresent ? lipo.getVoltage() : -1.0f;
-        float soc = max1704xPresent ? lipo.getSOC() : -1.0f;
-
-        Serial.printf("[Status Report] T=%.2f °C, V=%.2f V, SOC=%.1f %%\n", tempC, voltage, soc);
-
-        #ifdef TEST_MODE
-            File f = LittleFS.open("/status_log.txt", FILE_APPEND);
-            if (f) {
-                f.printf("%lu,%.2f,%.2f,%.1f\n", millis(), tempC, voltage, soc);
-                f.close();
-                LOG_DEBUGLN("[✓] Status snapshot stored to /status_log.txt");
-            } else {
-                LOG_DEBUGLN("[ERROR] Could not write to status_log.txt");
-            }
-        #endif
-
-        delay(500);
-        enterDeepSleep();
-    }
+    delay(500);
+    enterDeepSleep();
+}
 
     void collectBlockOfData() {
     const unsigned long sampleIntervalUs = 1000000UL / ACCEL_SAMPLE_RATE_HZ;
@@ -365,43 +354,6 @@ bool testMAX() {
 
     LOG_DEBUGLN("[✓] Buffer filled with new data");
 }
-
-// String classifyBufferedData() {
-//     float maxAccelMag = 0.0;
-//     float avgAy = 0.0;
-//     float avgAz = 0.0;
-
-//     for (int i = 0; i < ACCEL_NUM_SAMPLES; i++) {
-//         float mag = sqrt(
-//             accelX_buffer[i] * accelX_buffer[i] +
-//             accelY_buffer[i] * accelY_buffer[i] +
-//             accelZ_buffer[i] * accelZ_buffer[i]
-//         );
-
-//         if (mag > maxAccelMag) maxAccelMag = mag;
-//         avgAy += accelY_buffer[i];
-//         avgAz += accelZ_buffer[i];
-//     }
-
-//     avgAy /= ACCEL_NUM_SAMPLES;
-//     avgAz /= ACCEL_NUM_SAMPLES;
-//     // TODO: Add FFT or ML logic here using accelX/Y/Z_buffer[]
-//     String result = "⚠️ Unclassified";
-
-// #ifdef USE_PLACEHOLDER_LOGIC
-//     if (maxAccelMag > 25000 && avgAy > 15000 && avgAz > 15000) {
-//         result = "✅ Likely Machete";
-//     } else if (maxAccelMag > 15000) {
-//         result = "🔧 Possibly Chainsaw";
-//     }
-// #endif
-
-//     return result;
-// }
-
-String result = classifyBufferedData(accelX_buffer, accelY_buffer, accelZ_buffer, ACCEL_NUM_SAMPLES);
-
-
 
 void enterDeepSleep() {
     LOG_DEBUGLN("Preparing for deep sleep...");

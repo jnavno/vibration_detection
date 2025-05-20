@@ -4,10 +4,11 @@
 #include "FFT_signal.h"
 #include <math.h>
 #include "variant.h"
+#include "fft_config.h"
 
 
 #define SAMPLING_FREQUENCY 333  // Hz
-#define FFT_N ACCEL_NUM_SAMPLES
+
 
 String classifyBufferedData(float* accelX_buffer, float* accelY_buffer, float* accelZ_buffer, int num_samples) {
     float meanX = 0, meanY = 0, meanZ = 0;
