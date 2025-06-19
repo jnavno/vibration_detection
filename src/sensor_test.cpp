@@ -52,6 +52,10 @@
 #include <DebugConfiguration.h>
 #include "variant.h"
 #include "driver/rtc_io.h"
+#include "LEDStatus.h"
+
+#define MPU_DATA_READY_PIN GPIO_NUM_6
+#define MAX17048_ALERT_PIN GPIO_NUM_45
 
 #define uS_TO_S_FACTOR 1000000ULL
 #define TIME_TO_SLEEP  259200   /*72h sleeping*/
@@ -66,6 +70,8 @@ void disablePeripherals();
 void disableWakeInterrupt();
 void enableWakeInterrupt();
 void readSensorData();
+void testMAX_alert();
+
 
 void setup() {
     INIT_DEBUG_SERIAL();
@@ -86,6 +92,13 @@ void setup() {
     disableWakeInterrupt();
     disablePeripherals();
 
+    pinMode(STATUS_LED_PIN, OUTPUT);
+    pinMode(ALERT_LED_PIN, OUTPUT);
+
+    pinMode(MPU_DATA_READY_PIN, INPUT);
+    pinMode(MAX17048_ALERT_PIN, INPUT);
+
+
     pinMode(VEXT_CTRL_PIN, OUTPUT);
     powerVEXT(true);
     LOG_DEBUGLN("Sensors initialized.");
@@ -95,21 +108,42 @@ void setup() {
     LOG_DEBUGLN("I2C reinitialized.");
 
     bool mpuOK = testMPU();
-    if (!mpuOK) LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
+if (!mpuOK) {
+    LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
+    blinkAlertSensor();
+}
 
-    bool maxOK = testMAX();
-    if (!maxOK) LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
+bool maxOK = testMAX();
+if (!maxOK) {
+    LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
+    blinkAlertSensor();
+}
 
-    readSensorData();
+if (maxOK) {
+    lipo.setThreshold(20);
+    testMAX_alert();
+}
 
-    for (int i = 0; i < 3; i++) {   /*visual output: SETUP DONE*/
-        digitalWrite(STATUS_LED_PIN, HIGH);
-        delay(200);
-        digitalWrite(STATUS_LED_PIN, LOW);
-        delay(200);
-    }
+if (mpuOK && maxOK) {
+    blinkStatusOK();
+}
 
-    enterDeepSleep();
+readSensorData();
+
+// Test loop for MPU DRDY and MAX ALERT
+LOG_DEBUGLN("Testing MPU DATA_READY pin (GPIO6) for pulses...");
+
+for (int i = 0; i < 100; i++) {
+    LOG_DEBUG("MPU DATA_READY: %d    ", digitalRead(MPU_DATA_READY_PIN));
+    LOG_DEBUG("MAX17048 ALERT: %d\n", digitalRead(MAX17048_ALERT_PIN));
+    delay(10);
+}
+
+blinkAlertPulse();
+delay(300);
+
+enterDeepSleep();
+
 }
 
 void powerVEXT(bool state) {
@@ -181,6 +215,10 @@ void disablePeripherals() {
     } else {
         LOG_DEBUGLN("Bluetooth was already disabled.");
     }
+        // 🔹 Disable orange ON LED (GPIO 21)
+    LOG_DEBUGLN("Disabling orange ON LED (GPIO 21)...");
+    pinMode(21, OUTPUT);
+    digitalWrite(21, LOW);
 }
 
 
@@ -264,5 +302,49 @@ bool testMAX() {
     LOG_DEBUGLN("MAX17048 initialized successfully.");
     return true;
 }
+
+void testMAX_alert() {
+    // Set Voltage Alert thresholds
+    // Example: MIN = 3.50V, MAX = 4.30V
+    uint8_t valrt_min = (uint8_t)(3.50 / 0.02);  // 20mV per LSB
+    uint8_t valrt_max = (uint8_t)(4.30 / 0.02);
+
+    // Write VALRT MAX
+    Wire.beginTransmission(0x36);
+    Wire.write(0x14);  // VALRT register (MAX)
+    Wire.write(valrt_max);
+    Wire.write(0xFF);
+    Wire.endTransmission();
+
+    // Write VALRT MIN
+    Wire.beginTransmission(0x36);
+    Wire.write(0x15);  // VALRT register (MIN)
+    Wire.write(valrt_min);
+    Wire.write(0x00);
+    Wire.endTransmission();
+
+    LOG_DEBUGLN("MAX17048 VALRT thresholds set.");
+
+    // Set CONFIG ATHD (SOC threshold alert)
+    Wire.beginTransmission(0x36);
+    Wire.write(0x0C);  // CONFIG register
+    Wire.write(0x97);  // RCOMP default
+    Wire.write(0b00011100);  // ATHD=4%, ALRT enable
+    Wire.endTransmission();
+
+    LOG_DEBUGLN("MAX17048 CONFIG ATHD alert set.");
+
+    // Read ALRT pin
+    pinMode(MAX17048_ALERT_PIN, INPUT_PULLUP);  // Required (ALRT is open-drain)
+
+    int state = digitalRead(MAX17048_ALERT_PIN);
+
+    if (state == LOW) {
+        LOG_DEBUGLN(">>> ALERT ACTIVE (LOW) <<<");
+    } else {
+        LOG_DEBUGLN("ALERT not active (HIGH)");
+    }
+}
+
 void loop() {
 }

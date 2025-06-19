@@ -38,6 +38,7 @@ Purpose                     LED     Pattern               Meaning
 #include "variant.h"
 #include <SD.h>
 #include <SPI.h>
+#include "LEDStatus.h"
 
 #define FILE_PREFIX "chain_far_new"  // Change this before recording different datasets
 MPU6050 mpu;
@@ -71,11 +72,7 @@ void blinkLED(int pin, int blinks, int on_ms, int off_ms) {
   }
 }
 
-void blinkStatusShort()    { blinkLED(STATUS_LED_PIN, 3, 100, 100); }
-void blinkStatusQuick()    { blinkLED(STATUS_LED_PIN, 1, 40, 40); }
-void blinkStatusSlow()     { blinkLED(STATUS_LED_PIN, 3, 300, 200); }
-void blinkAlertError()     { blinkLED(ALERT_LED_PIN, 3, 300, 300); }
-void blinkAlertSensor()    { blinkLED(ALERT_LED_PIN, 5, 100, 100); }
+
 
 void powerVEXT(bool state);
 bool testMPU();
@@ -206,7 +203,7 @@ void setup() {
     if (elapsed >= maxSeconds) {
       LOG_DEBUGLN("✅ Logging window complete. Entering permanent deep sleep.");
       SD.remove(STATE_FILENAME);
-      blinkLED(ALERT_LED_PIN, 10, 150, 150);
+      void blinkAlertPulse();
       esp_deep_sleep_start();
     }
 
@@ -231,7 +228,7 @@ void setup() {
     esp_deep_sleep_start();
   } else {
     LOG_DEBUGLN("🟡 Recording complete. Entering permanent deep sleep.");
-    blinkStatusSlow();
+    void blinkAlertPulse();
     delay(500);
     esp_deep_sleep_start();
   }
