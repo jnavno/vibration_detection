@@ -4,7 +4,7 @@
 #define LED_PIN GPIO_NUM_3
 #define VEXT_CTRL_PIN GPIO_NUM_36
 #define INTERRUPT_PIN GPIO_NUM_7
-#define STATUS_LED_PIN GPIO_NUM_4
+#define STATUS_LED_PIN GPIO_NUM_4 //change to 34 for last pcb pinout
 #define ALERT_LED_PIN GPIO_NUM_5
 #define SDA_PIN GPIO_NUM_41
 #define SCL_PIN GPIO_NUM_42

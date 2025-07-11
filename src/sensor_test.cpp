@@ -71,7 +71,8 @@ void disableWakeInterrupt();
 void enableWakeInterrupt();
 void readSensorData();
 void testMAX_alert();
-
+bool checkMPU_DRDY_pin();
+bool validateMAX_ALERT_wiring(float marginV = 0.05f);
 
 void setup() {
     INIT_DEBUG_SERIAL();
@@ -107,14 +108,19 @@ void setup() {
     Wire.begin(SDA_PIN, SCL_PIN);
     LOG_DEBUGLN("I2C reinitialized.");
 
+
     bool mpuOK = testMPU();
-if (!mpuOK) {
+if (mpuOK) {
+      checkMPU_DRDY_pin();
+} else {
     LOG_DEBUGLN("ERROR: MPU6050 NOT detected!");
     blinkAlertSensor();
 }
 
 bool maxOK = testMAX();
-if (!maxOK) {
+if (maxOK) {
+    validateMAX_ALERT_wiring();
+} else {
     LOG_DEBUGLN("ERROR: MAX1704x NOT detected!");
     blinkAlertSensor();
 }
@@ -126,18 +132,10 @@ if (maxOK) {
 
 if (mpuOK && maxOK) {
     blinkStatusOK();
+    readSensorData();
 }
 
-readSensorData();
-
-// Test loop for MPU DRDY and MAX ALERT
-LOG_DEBUGLN("Testing MPU DATA_READY pin (GPIO6) for pulses...");
-
-for (int i = 0; i < 100; i++) {
-    LOG_DEBUG("MPU DATA_READY: %d    ", digitalRead(MPU_DATA_READY_PIN));
-    LOG_DEBUG("MAX17048 ALERT: %d\n", digitalRead(MAX17048_ALERT_PIN));
-    delay(10);
-}
+Serial.println("*** Test complete; entering deep sleep ***");
 
 blinkAlertPulse();
 delay(300);
@@ -282,6 +280,11 @@ bool testMPU() {
             LOG_DEBUGLN("ERROR: Gyroscope not properly disabled! Aborting.");
             return false;
         }
+        // ── NEW: enable 1 kHz DataReady pulses on INT pin ──
+        // sample rate divider = (8 kHz / (1 + divider)), so divider=7 → 1 kHz
+        mpu.setRate(7);
+        mpu.setIntDataReadyEnabled(true);
+        LOG_DEBUGLN("MPU6050 DRDY interrupt enabled at 1 kHz");
 
         LOG_DEBUGLN("MPU6050 gyroscope disabled successfully.");
         LOG_DEBUGLN("MPU6050 initialized successfully.");
@@ -298,7 +301,17 @@ bool testMAX() {
     }
     lipo.quickStart(); // Force chip to reset SoC calculation
     delay(200);
-
+    // ── NEW: generate a one-off ALERT pulse ──
+    float vb = lipo.getVoltage();
+    // toggle threshold ±50 mV around VBAT to force ALERT low→high→low
+    uint8_t thrH = uint8_t((vb + 0.05f) / 0.02f);
+    uint8_t thrL = uint8_t((vb - 0.05f) / 0.02f);
+    lipo.setThreshold(thrH);
+    delay(20);
+    lipo.setThreshold(thrL);
+    delay(20);
+    lipo.setThreshold(thrH);
+    LOG_DEBUGLN("MAX17048 ALERT pulse generated");
     LOG_DEBUGLN("MAX17048 initialized successfully.");
     return true;
 }
@@ -344,6 +357,45 @@ void testMAX_alert() {
     } else {
         LOG_DEBUGLN("ALERT not active (HIGH)");
     }
+}
+
+    bool checkMPU_DRDY_pin() {
+  pinMode(MPU_DATA_READY_PIN, INPUT_PULLUP);
+  uint8_t idle = digitalRead(MPU_DATA_READY_PIN);
+  unsigned long start = millis();
+
+  // wait up to 200 ms for the pin to toggle once
+  while (millis() - start < 200) {
+    if (digitalRead(MPU_DATA_READY_PIN) != idle) {
+      Serial.println("✅ MPU DATA_READY pin is toggling");
+      return true;
+    }
+  }
+
+  Serial.println("❌ MPU DATA_READY pin did NOT toggle");
+  return false;
+}
+
+//programming the MAX’s undervoltage threshold above that voltage to force an ALERT transition.
+bool validateMAX_ALERT_wiring(float marginV) {
+  // 1) Read the live battery voltage
+  float vb    = lipo.getVoltage();           // e.g. 4.20 V
+  // 2) Choose a threshold slightly ABOVE that
+  float thrV  = vb + marginV;                // e.g. 4.25 V
+  // 3) Convert to 20 mV‐per‐LSB and write to VALRT MIN
+  uint8_t thr = uint8_t((thrV / 0.02f) + 0.5f);
+  lipo.setThreshold(thr);
+  delay(50);  // give the chip time to drive ALERT
+
+  // 4) Sample the ALERT pin (with pull-up)
+  pinMode(MAX17048_ALERT_PIN, INPUT_PULLUP);
+  if (digitalRead(MAX17048_ALERT_PIN) == LOW) {
+    Serial.println("✅ MAX ALERT pin toggled LOW (wiring OK)");
+    return true;
+  } else {
+    Serial.println("❌ MAX ALERT pin stayed HIGH");
+    return false;
+  }
 }
 
 void loop() {
